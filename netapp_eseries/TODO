@@ -1,0 +1,30 @@
+Prio 1
+------
+
+- SSL Verify aus den args nutzen, nicht in jedem call
+- Value Specs
+    - Interface Status (Offline OK)
+    - Temparature Disks
+    - 
+
+Prio 2
+------
+
+- Hot Spare coverage - /storage-systems/{system-id}/hot-spare-coverage
+- Interface Type NVME ?
+- Read and Write for debugging inaccessable systems
+- Hardware Inventory - SPFs
+- CacheBackupDevices
+- CacheMemoryDimms
+
+- /storage-systems/{system-id}/hosts
+- /storage-systems/{system-id}/failures
+- /storage-systems/{system-id}/hot-spare-coverage Retrieves hot spare coverage information.
+- /storage-systems/{system-id}/consistency-groups
+- /storage-systems/{system-id}/async-mirrors
+- /storage-systems/{system-id}/events
+- /storage-systems/{system-id}/mel-events/available
+    - Mel Events als logwatch ausgeben ? ID des letzten Events speichern ?
+
+Prio 3
+------

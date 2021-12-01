@@ -1,0 +1,11 @@
+*.mkp
+.coverage
+__pycache__
+debug.log
+/temp/*.txt
+.devcontainer
+.pytest*
+.vscode
+.env
+.flake8
+package
