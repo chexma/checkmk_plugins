@@ -1,7 +1,7 @@
 *.mkp
 .coverage
 __pycache__
-debug.log
+*.log
 /temp/*
 .devcontainer
 .pytest*
