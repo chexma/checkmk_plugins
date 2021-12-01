@@ -9,3 +9,4 @@ debug.log
 .env
 .flake8
 package
+.gitignore
