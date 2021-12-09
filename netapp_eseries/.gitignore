@@ -1,4 +1,3 @@
-*.mkp
 .coverage
 __pycache__
 *.log

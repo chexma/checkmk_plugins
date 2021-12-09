@@ -78,8 +78,8 @@ def check_netapp_eseries_controllers(item: str, params,
         yield Metric("disk_write_ios", disk_write_ios)
         yield Metric("disk_read_throughput", disk_read_throughput)
         yield Metric("disk_write_throughput", disk_write_throughput)
-        yield Metric("read_latency", disk_read_responsetime)
-        yield Metric("write_latency", disk_write_responsetime)
+        yield Metric("read_latency", disk_read_responsetime / 1000)
+        yield Metric("write_latency", disk_write_responsetime / 1000)
         yield Metric("fullStripeWrites", value=fullStripeWrites, boundaries=(0, 100))
         yield Metric("util", avg_cpu_utilization)
 
