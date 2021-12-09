@@ -1,10 +1,10 @@
 # checkmk plugin to monitor Netapp E-Series Storage Systems with checkmk 2.x
 
-How to Install and Configure this checkmk Plugin
+How to Install and Configure this checkmk Plugin :
 
 ## 1. Installation 
 
-### 1.1 RAW Edition
+### 1.1 checkmk RAW Edition
 
 - Download the checkmk mkp package netapp_eseries-<version>.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
@@ -18,7 +18,7 @@ How to Install and Configure this checkmk Plugin
 More Informations about installing mkps on the command line:
 https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
-### 1.2 Enterprise, Free and Managed Services Edition
+### 1.2 checkmk Enterprise, Free and Managed Services Edition
 
 - Download the checkmk mkp package netapp_eseries-<version>.mkp
 - Open the checkmk Webinterface, select "Setup" - "Extension packages"
@@ -46,16 +46,20 @@ In the webinterface of the E-Series you can easily set a password for that user.
 - Select "Create rule in folder"
 
 The minimum required options are "Username" and "Password", all other options are optional and should not be touched in standard environments.
-In Conditions either choose the explicit hostname of the host you added beforehands or use other conditions e.g. tags or labels (if defined ) to match your storage system(s).
+In "Conditions" either choose the explicit hostname of the host you added beforehands or use other conditions e.g. tags or labels (if defined ) to match your storage system(s).
 
 ## 3. Debugging
 
 Login to your checkmk server and switch to the site user
-su - siteuser
+`su - <your siteuser>`
+
 Execute the following command :
 
-'cmk -D <E-Series Hostname in checkmk> | grep Program | cut -d ":" -f 2'
+`cmk -D <E-Series Hostname in checkmk> | grep Program | cut -d ":" -f 3`
 e.g.
-cmk -D eseries | grep Program | cut -d ":" -f 2
+`cmk -D eseries | grep Program | cut -d ":" -f 3`
 
-/omd/sites/<your site name>/local/share/check_mk/agents/special/agent_netappeseries -u 'monitor' -s '!!!!!!!!' '127.0.0.1'
+The output is the so called "special agent" that fetches the data of your netapp for checkmk. 
+Copy that command and execute add the -vvv and --debug flags.
+
+`/omd/sites/<your site name>/local/share/check_mk/agents/special/agent_netappeseries -u 'monitor' -s 'password' -vvv --debug 'ip-address'`
