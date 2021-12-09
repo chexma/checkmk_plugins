@@ -55,12 +55,12 @@ def check_netapp_eseries_controllers(item: str, params,
         perfdata = None
 
     if perfdata:
-        disk_read_ios = round(data.get('performance').get('readIOps'), 2)
-        disk_write_ios = round(data.get('performance').get('writeIOps'), 2)
-        disk_read_throughput = round(data.get('performance').get('readThroughput')) * 1024 * 1024
-        disk_write_throughput = round(data.get('performance').get('writeThroughput')) * 1024 * 1024
-        disk_read_responsetime = round(data.get('performance').get('readResponseTime'))
-        disk_write_responsetime = round(data.get('performance').get('writeResponseTime'))
+        disk_read_ios = round(data.get('performance').get('readIOps'), 3)
+        disk_write_ios = round(data.get('performance').get('writeIOps'), 3)
+        disk_read_throughput = round(data.get('performance').get('readThroughput'), 3) * 1024 * 1024
+        disk_write_throughput = round(data.get('performance').get('writeThroughput'), 3) * 1024 * 1024
+        disk_read_responsetime = round(data.get('performance').get('readResponseTime'), 3)
+        disk_write_responsetime = round(data.get('performance').get('writeResponseTime'), 3)
 
         avg_cpu_utilization = round(data.get('performance').get('cpuAvgUtilization'))
         fullStripeWrites = round(data.get('performance').get('fullStripeWritesBytesPercent'))

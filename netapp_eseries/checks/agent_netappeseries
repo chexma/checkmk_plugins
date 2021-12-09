@@ -17,7 +17,7 @@
 def agent_netappeseries_arguments(params, hostname, ipaddress):
     args = ''
     if params["user"] != "":
-        args += " -u " + quote_shell_string(params["user"])
+        args += "-u " + quote_shell_string(params["user"])
     if params["password"] != "":
         args += " -s " + quote_shell_string(params["password"])
     if 'proto' in params and params["proto"] != "":

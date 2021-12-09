@@ -42,7 +42,7 @@ def _valuespec_special_agents_netappeseries():
                 title = _("Username"),
                 allow_empty = False,
             )),
-            ("password", IndividualOrStoredPassword(
+            ("password", TextAscii(
                 title = _("Password"),
                 allow_empty = False,
             )),

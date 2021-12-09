@@ -48,10 +48,10 @@ def check_netapp_eseries_interfaces(item: str, params, section) -> CheckResult:
         perfdata = None
 
     if perfdata:
-        disk_read_ios = round(data.get('performance').get('readIOps', 0), 2)
-        disk_write_ios = round(data.get('performance').get('writeIOps', 0), 2)
-        disk_read_throughput = round(data.get('performance').get('readThroughput', 0), 2) * 1024 * 1024
-        disk_write_throughput = round(data.get('performance').get('writeThroughput', 0), 2) * 1024 * 1024
+        disk_read_ios = round(data.get('performance').get('readIOps', 0), 3)
+        disk_write_ios = round(data.get('performance').get('writeIOps', 0), 3)
+        disk_read_throughput = round(data.get('performance').get('readThroughput', 0), 3) * 1024 * 1024
+        disk_write_throughput = round(data.get('performance').get('writeThroughput', 0), 3) * 1024 * 1024
 
     channel_type = data.get('channelType')
 

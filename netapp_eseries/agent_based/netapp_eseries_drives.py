@@ -55,10 +55,10 @@ def check_netapp_eseries_drives(item: str, params, section) -> CheckResult:
         perfdata = None
 
     if perfdata:
-        disk_read_ios = round(data.get('performance').get('readIOps'), 2)
-        disk_write_ios = round(data.get('performance').get('writeIOps'), 2)
-        disk_read_throughput = round(data.get('performance').get('readThroughput'), 2) * 1024 * 1024
-        disk_write_throughput = round(data.get('performance').get('writeThroughput'), 2) * 1024 * 1024
+        disk_read_ios = round(data.get('performance').get('readIOps'), 3)
+        disk_write_ios = round(data.get('performance').get('writeIOps'), 3)
+        disk_read_throughput = round(data.get('performance').get('readThroughput'), 3) * 1024 * 1024
+        disk_write_throughput = round(data.get('performance').get('writeThroughput'), 3) * 1024 * 1024
 
     # Status
     status = data['status']

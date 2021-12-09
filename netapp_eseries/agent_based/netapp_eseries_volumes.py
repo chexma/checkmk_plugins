@@ -61,12 +61,12 @@ def check_netapp_eseries_volumes(item: str, params, section) -> CheckResult:
         perfdata = None
 
     if perfdata:
-        disk_read_ios = round(data.get('performance').get('readIOps'), 2)
-        disk_write_ios = round(data.get('performance').get('writeIOps'), 2)
-        disk_read_throughput = round(data.get('performance').get('readThroughput')) * 1024 * 1024
-        disk_write_throughput = round(data.get('performance').get('writeThroughput')) * 1024 * 1024
-        disk_read_responsetime = round(data.get('performance').get('readResponseTime'))
-        disk_write_responsetime = round(data.get('performance').get('writeResponseTime'))
+        disk_read_ios = round(data.get('performance').get('readIOps'), 3)
+        disk_write_ios = round(data.get('performance').get('writeIOps'), 3)
+        disk_read_throughput = round(data.get('performance').get('readThroughput'), 3) * 1024 * 1024
+        disk_write_throughput = round(data.get('performance').get('writeThroughput'), 3) * 1024 * 1024
+        disk_read_responsetime = round(data.get('performance').get('readResponseTime'), 3)
+        disk_write_responsetime = round(data.get('performance').get('writeResponseTime'), 3)
 
     if is_offline is True:
         message = f"Volume {item} is OFFLINE"
@@ -90,8 +90,8 @@ def check_netapp_eseries_volumes(item: str, params, section) -> CheckResult:
         yield Metric("disk_write_ios", disk_write_ios)
         yield Metric("disk_read_throughput", disk_read_throughput)
         yield Metric("disk_write_throughput", disk_write_throughput)
-        yield Metric("read_latency", disk_read_responsetime)
-        yield Metric("write_latency", disk_write_responsetime)
+        yield Metric("read_latency", disk_read_responsetime / 1000)
+        yield Metric("write_latency", disk_write_responsetime / 1000)
 
         state = State.OK
         message = f"Read: {render.bytes(disk_read_throughput)}, Write: {render.bytes(disk_write_throughput)}, Read operations: {disk_read_ios}/s, Write operations: {disk_write_ios}/s"
