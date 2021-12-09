@@ -50,8 +50,24 @@ In "Conditions" either choose the explicit hostname of the host you added before
 
 ## 3. Debugging
 
-Login to your checkmk server and switch to the site user
-`su - <your siteuser>`
+Login to your checkmk server and switch to the site user (site user has the name of your checkmk site)
+
+### 1. Test connection with curl
+
+`curl -v https://IP-Address-of-Eseries:8443/`
+e.g.
+curl -v https://192.168.2.1:8443/
+
+You should see something like 
+ Trying 192.168.2.1...
+ TCP_NODELAY set 
+**Connected to 192.168.2.1 (192.168.2.1) port 8443 (#0)**
+
+If that does not work, fix all network / routing / proxy / firewall related problems first. 
+
+### 2. 
+
+### 3. Test the datasource program / special agent
 
 Execute the following command :
 
@@ -59,7 +75,9 @@ Execute the following command :
 e.g.
 `cmk -D eseries | grep Program | cut -d ":" -f 3`
 
-The output is the so called "special agent" that fetches the data of your netapp for checkmk. 
-Copy that command and execute add the -vvv and --debug flags.
+The output is the so called "special agent" with its parameters that fetches the data of your netapp for checkmk. 
+Copy that command and add the -vvv and --debug flags:
 
 `/omd/sites/<your site name>/local/share/check_mk/agents/special/agent_netappeseries -u 'monitor' -s 'password' -vvv --debug 'ip-address'`
+
+Now you can run that command and see, if data is being fetched.
