@@ -1,10 +1,10 @@
-checkmk plugin to monitor Netapp E-Series Storage Systems with checkmk 2.x
+# checkmk plugin to monitor Netapp E-Series Storage Systems with checkmk 2.x
 
 How to Install and Configure this checkmk Plugin
 
-1. Installation 
+## 1. Installation 
 
-1.1 RAW Edition
+### 1.1 RAW Edition
 
 - Download the checkmk mkp package netapp_eseries-<version>.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
@@ -18,7 +18,7 @@ How to Install and Configure this checkmk Plugin
 More Informations about installing mkps on the command line:
 https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
-1.2 Enterprise, Free and Managed Services Edition
+### 1.2 Enterprise, Free and Managed Services Edition
 
 - Download the checkmk mkp package netapp_eseries-<version>.mkp
 - Open the checkmk Webinterface, select "Setup" - "Extension packages"
@@ -29,14 +29,14 @@ https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 More Informations about installing mkps in the checkmk webinterface:
 https://docs.checkmk.com/latest/en/mkps.html#wato
 
-2. Configuration
+# 2. Configuration
 
 2.1 NetApp E-Series User
 Unfortunately it is not possible to create users on the E-Series, therefore we do have to stick with the existing ones.
 I would recommend to use the user "monitor" instead of the admin user.
 In the webinterface of the E-Series you can easily set a password for that user.
 
-2.1 Setup a rule 
+# 2.1 Setup a rule 
 
 - First you have to create a host (your NetApp E-Series) in checkmk
 - Enter the necessary values
@@ -48,12 +48,13 @@ In the webinterface of the E-Series you can easily set a password for that user.
 The minimum required options are "Username" and "Password", all other options are optional and should not be touched in standard environments.
 In Conditions either choose the explicit hostname of the host you added beforehands or use other conditions e.g. tags or labels (if defined ) to match your storage system(s).
 
-3. Debugging
+# 3. Debugging
 
 Login to your checkmk server and switch to the site user
 su - siteuser
 Execute the following command :
-cmk -D <E-Series Hostname in checkmk> | grep Program | cut -d ":" -f 2
+
+'cmk -D <E-Series Hostname in checkmk> | grep Program | cut -d ":" -f 2'
 e.g.
 cmk -D eseries | grep Program | cut -d ":" -f 2
 
