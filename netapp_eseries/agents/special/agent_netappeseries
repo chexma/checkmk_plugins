@@ -172,7 +172,7 @@ def fetch_storage_data(session, sections, args, base_url, controller_ids):
 
             # Output current section
             sys.stdout.write("<<<netapp_eseries_%s:sep(0)>>>\n" % section.name.lower())
-            handle_output(section_data, section.ident, section.name)
+            handle_output(section_data)
 
             if args.write is True:
 
@@ -350,10 +350,10 @@ def add_checkmk_item_identifier(section, controller_ids, section_data):
     return section_data
 
 
-def handle_output(data, options, object_typ):
+def handle_output(data):
     output_dict = {}
     for element in data:
-        output_dict.setdefault(object_typ + '_' + element[options].strip(), element)
+        output_dict.setdefault(element['checkmk_item_identifier'].strip(), element)
     sys.stdout.write(str(output_dict) + "\n")
 
 
@@ -377,91 +377,78 @@ def main(argv: Any = None) -> int:
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="controllers",
             uri="/controllers",
             perfdata_uri="/analysed-controller-statistics",
             perfdata_identifier="controllerId",
-            ident="serialNumber",
         ),
         Section(
             name="drawers",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="drives",
             uri="/drives",
             perfdata_uri="/analysed-drive-statistics",
             perfdata_identifier="diskId",
-            ident="worldWideName",
         ),
         Section(
             name="esms",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="fans",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="interfaces",
             uri="/interfaces",
             perfdata_uri="/analysed-interface-statistics",
             perfdata_identifier="interfaceId",
-            ident="interfaceRef",
         ),
         Section(
             name="pools",
             uri="/storage-pools",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="powerSupplies",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="system",
             uri="/",
             perfdata_uri="/analysed-system-statistics",
             perfdata_identifier="storageSystemId",
-            ident="id",
         ),
         Section(
             name="trays",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
         Section(
             name="volumes",
             uri="/volumes",
             perfdata_uri="/analysed-volume-statistics",
-            perfdata_identifier="volumeId",
-            ident="id",
+            perfdata_identifier="volumeId", 
         ),
         Section(
             name="thermalSensors",
             uri="/hardware-inventory",
             perfdata_uri=None,
             perfdata_identifier=None,
-            ident="id",
         ),
     ]
 

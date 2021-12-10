@@ -30,10 +30,6 @@ def parse_netapp_eseries(string_table):
 
     import ast
     parsed = {}
-    data = ast.literal_eval(string_table[0][0])
-    for element in data:
-        device = data[element]
-        dev_name = device['checkmk_item_identifier']
-        parsed.setdefault(dev_name, device)
+    parsed = ast.literal_eval(string_table[0][0])
 
     return parsed
