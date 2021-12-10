@@ -122,9 +122,9 @@ def check_netapp_eseries_drives(item: str, params, section) -> CheckResult:
 
     # SSD related
     if media_type == 'ssd':
-        yield Metric("endurance", endurance_used)
-        yield Metric("spareBlocks", spare_blocks)
-        yield Metric("erase", erase_count)
+        yield Metric("endurance", endurance_used, boundaries=(0, 100))
+        yield Metric("spareBlocks", spare_blocks, boundaries=(0, 100))
+        yield Metric("erase", erase_count, boundaries=(0, 100))
 
     yield from check_temperature(temperature,
                                  params, unique_name="netapp_eseries_temp_%s" % item)
