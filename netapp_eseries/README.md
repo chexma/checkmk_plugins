@@ -6,7 +6,7 @@ How to Install and Configure this checkmk Plugin :
 
 ### 1.1 checkmk RAW Edition
 
-- Download the checkmk mkp package netapp_eseries-version.mkp
+- Download the latest checkmk mkp package netapp_eseries-version.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
 - Make sure that the file is accessible by the "site user" of your monitoring site : `chown <site name> /tmp/netapp_eseries-<version>.mkp`
 - Switch to your site user with `su - <your_site_name>`
@@ -20,9 +20,9 @@ https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
 ### 1.2 checkmk Enterprise, Free and Managed Services Edition
 
-- Download the checkmk mkp package `netapp_eseries-<version>.mkp`
+- Download the latest checkmk mkp package netapp_eseries-version.mkp
 - Open the checkmk Webinterface, select "Setup" - "Extension packages"
-- If the entry Extension packages is not shown, click on "show more" on the top right of the setup menu
+- If the entry "Extension packages" is not shown, click on "show more" on the top right of the setup menu
 - Select "Upload package"
 - Select the downloaded file and "Upload & install"
 
@@ -31,12 +31,12 @@ https://docs.checkmk.com/latest/en/mkps.html#wato
 
 ## 2. Configuration
 
-2.1 NetApp E-Series User
+### 2.1 NetApp E-Series User
 Unfortunately it is not possible to create users on the E-Series, therefore we do have to stick with the existing ones.
 I would recommend to use the user "monitor" instead of the admin user.
 In the webinterface of the E-Series you can easily set a password for that user.
 
-## 2.1 Setup a rule 
+## 2.2 Setup a rule 
 
 - First you have to create a host (your NetApp E-Series) in checkmk
 - Enter the necessary values
@@ -65,9 +65,7 @@ You should see something like
 
 If that does not work, fix all network / routing / proxy / firewall related problems first. 
 
-### 2. 
-
-### 3. Test the datasource program / special agent
+### 2. Test the datasource program / special agent
 
 Execute the following command :
 
