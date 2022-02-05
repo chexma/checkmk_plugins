@@ -370,7 +370,7 @@ def main(argv: Any = None) -> int:
     args = None
     Section = namedtuple(
         "Section",
-        ["name", "uri", "perfdata_uri", "perfdata_identifier", "ident"])
+        ["name", "uri", "perfdata_uri", "perfdata_identifier"])
     sections = [
         Section(
             name="batteries",
