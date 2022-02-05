@@ -322,7 +322,7 @@ def add_checkmk_item_identifier(section, controller_ids, section_data):
         elif section.name == 'system':
             unique_identifier = item['name']
 
-        elif section.name == 'controllers':
+        elif section.name in ['controllers', 'drawers']:
             unique_identifier = item['physicalLocation']['label']
 
         elif section.name == 'interfaces':
@@ -338,8 +338,9 @@ def add_checkmk_item_identifier(section, controller_ids, section_data):
         elif section.name == 'trays':
             unique_identifier = str(item['trayId'])
 
-        elif section.name == 'drawers':
-            unique_identifier = str(item['physicalLocation']['label'])
+#       Combined with controllers 
+#        elif section.name == 'drawers':
+#            unique_identifier = str(item['physicalLocation']['label'])
 
         else:
             slot = str(item['physicalLocation']['slot'])
@@ -370,7 +371,7 @@ def main(argv: Any = None) -> int:
     args = None
     Section = namedtuple(
         "Section",
-        ["name", "uri", "perfdata_uri", "perfdata_identifier", "ident"])
+        ["name", "uri", "perfdata_uri", "perfdata_identifier"])
     sections = [
         Section(
             name="batteries",

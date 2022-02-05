@@ -48,6 +48,10 @@ In the webinterface of the E-Series you can easily set a password for that user.
 The minimum required options are "Username" and "Password", all other options are optional and should not be touched in standard environments.
 In "Conditions" either choose the explicit hostname of the host you added beforehands or use other conditions e.g. tags or labels (if defined ) to match your storage system(s).
 
+## 2.3 Discover the new services
+
+- 
+
 ## 3. Debugging
 
 Login to your checkmk server and switch to the site user (site user has the name of your checkmk site)
