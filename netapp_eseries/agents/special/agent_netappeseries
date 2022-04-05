@@ -78,7 +78,6 @@ def parse_arguments(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("-i",
                         "--system-id",
                         default=1,
-                        type=int,
                         help="""Your E-Series System ID""")
     parser.add_argument(
         "-p",
