@@ -96,12 +96,10 @@ def _valuespec_special_agents_netappeseries():
                     ('https', _("https")),
                 ],
             )),
-            ("system-id", Integer(
+            ("system-id", TextAscii(
                 title = _("Advanced - E-Series-System-ID"),
                 help = _("The System ID of your Netapp E-Series. Should always be 1 if not connected through a SANtricity Web Proxy"),
                 default_value = 1,
-                minvalue = 1,
-                maxvalue = 1024,
             )),
         ],
     )
