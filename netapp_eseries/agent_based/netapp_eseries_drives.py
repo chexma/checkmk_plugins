@@ -31,6 +31,7 @@ from .agent_based_api.v1 import (
     State,
     render,
     Metric,
+    get_value_store,
 )
 
 from .netapp_eseries import (parse_netapp_eseries,
@@ -127,7 +128,9 @@ def check_netapp_eseries_drives(item: str, params, section) -> CheckResult:
         yield Metric("erase", erase_count, boundaries=(0, 100))
 
     yield from check_temperature(temperature,
-                                 params, unique_name="netapp_eseries_temp_%s" % item)
+                                 params,
+                                 unique_name="netapp_eseries_temp_%s" % item,
+                                 value_store=get_value_store(),)
 
 
 register.check_plugin(
