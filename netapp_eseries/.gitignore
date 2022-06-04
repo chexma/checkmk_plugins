@@ -2,6 +2,7 @@
 __pycache__
 *.log
 /temp/*
+/temp
 .devcontainer
 .pytest*
 .vscode
