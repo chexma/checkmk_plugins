@@ -1,4 +1,4 @@
-# yacai - yet another agent installer
+# yacai - yet another checkmk agent installer
 # checkmk Monitoring Agent install script
 # Andre Eckstein
 # Andre.Eckstein@Bechtle.com
@@ -25,7 +25,6 @@ param (
 
 #$Servers = Get-Content "C:\temp\hosts.txt"
 $Servers = 'localhost'
-#$CheckMkAgentFile = "\\srv-iuk\d$\IuK\ProgrammKatalog\check_mk\Programm\Aktueller_Client\check-mk-agent21.msi"
 
 #
 $CheckMkAgentPackageName = "check-mk-agent21.msi"
