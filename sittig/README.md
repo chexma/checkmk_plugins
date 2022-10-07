@@ -1,1 +1,0 @@
-# checkmk plugin to monitor Sittig Notification Devices via SNMP
