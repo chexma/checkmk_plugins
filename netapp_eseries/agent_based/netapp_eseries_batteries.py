@@ -51,7 +51,7 @@ def check_netapp_eseries_batteries(item: str, params, section) -> CheckResult:
 
     message = f"Battery {item }, status: {status}, serial nr.: {serial_number}"
 
-    if status in ["optimal", "maintenanceCharging"]:
+    if status in ["optimal", "maintenanceCharging", "learning"]:
         state = State.OK
     else:
         state = State.WARN
