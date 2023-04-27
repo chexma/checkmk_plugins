@@ -94,7 +94,7 @@ def check_netapp_eseries_volumes(item: str, params, section) -> CheckResult:
         yield Metric("write_latency", disk_write_responsetime / 1000)
 
         state = State.OK
-        message = f"Read: {render.bytes(disk_read_throughput)}, Write: {render.bytes(disk_write_throughput)}, Read operations: {disk_read_ios}/s, Write operations: {disk_write_ios}/s"
+        message = f"Read: {render.iobandwith(disk_read_throughput)}, Write: {render.iobandwith(disk_write_throughput)}, Read operations: {disk_read_ios}/s, Write operations: {disk_write_ios}/s"
         yield Result(state=State(state), summary=message)
 
 
