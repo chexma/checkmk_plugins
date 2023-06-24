@@ -18,25 +18,23 @@ from typing import Any, Mapping, Optional, Sequence
 
 from cmk.base.check_api import passwordstore_get_cmdline
 from cmk.base.config import special_agent_info
-import shlex
 
-def agent_netappeseries_arguments(params, hostname, ipaddress):
-    args = ''
-    if params["user"] != "":
-        args += "-u " + shlex.quote(params["user"])
-    if params["password"] != "":
-        args += " -s " + shlex.quote(params["password"])
-    if 'proto' in params and params["proto"] != "":
-        args += " --proto " + params["proto"]
-    if 'port' in params and params["port"] != "":
-        args += " --port " + str(params["port"])
-    if 'system-id' in params and params["system-id"] != "":
-        args += " --system-id " + str(params["system-id"])
-    if 'sections' in params and params["sections"] != "":
-        args += " --sections " + ",".join(params["sections"])
 
-    args += " " + shlex.quote(ipaddress)
-    return args
+def agent_netappeseries_arguments(
+    params: Mapping[str, Any], hostname: str, ipaddress: Optional[str]
+) -> Sequence[str]:
+    '''build command line arguments'''
+    return [
+        "-u",
+        f"{params['user']}",
+        "-s",
+        passwordstore_get_cmdline("%s", params["password"]),
+        *(["--port", f"{params['port']}"] if "port" in params else []),
+        *(["--proto", f"{params['proto']}"] if "proto" in params else []),
+        *(["--system-id", f"{params['system-id']}"] if "system-id" in params else []),
+        *(["--sections", f",".join(params["sections"])] if "sections" in params else []),
+        ipaddress or hostname,
+    ]
 
 
 special_agent_info['netappeseries'] = agent_netappeseries_arguments

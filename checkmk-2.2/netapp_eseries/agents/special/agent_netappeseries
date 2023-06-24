@@ -31,7 +31,6 @@ from cmk.special_agents.utils.argument_parsing import Args, create_default_argum
 
 cmk.utils.password_store.replace_passwords()
 
-
 LOGGER = logging.getLogger("agent_netapp_e_series")
 
 ############
