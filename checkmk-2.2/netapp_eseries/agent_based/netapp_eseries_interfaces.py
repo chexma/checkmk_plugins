@@ -66,10 +66,13 @@ def check_netapp_eseries_interfaces(item: str, params, section) -> CheckResult:
         status = interface_data['interfaceData']['ethernetData']['linkStatus']
     elif interface_type == "fibre":
         status = interface_data['linkStatus']
+    elif interface_type == "pcie": 
+        channel = interface_data['channel']
+        status = f"driveside nvme - channel {channel} - status undefined"
         
     message = f"Port status: {status}"
 
-    if status not in ["optimal", "up"]:
+    if status not in ["optimal", "up"] and interface_type != 'pcie' :
         state = State.WARN
     else:
         state = State.OK
