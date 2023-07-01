@@ -20,7 +20,6 @@
 import requests
 import urllib3
 import logging
-import argparse
 import sys
 import json
 from typing import List, Any
@@ -28,6 +27,10 @@ from collections import namedtuple
 import cmk.utils.password_store
 from cmk.special_agents.utils.agent_common import special_agent_main
 from cmk.special_agents.utils.argument_parsing import Args, create_default_argument_parser
+
+from cmk.special_agents.utils import (
+    vcrtrace,
+)
 
 cmk.utils.password_store.replace_passwords()
 
@@ -38,7 +41,7 @@ LOGGER = logging.getLogger("agent_netapp_e_series")
 ############
 
 
-def parse_arguments(argv: List[str]) -> argparse.Namespace:
+def parse_arguments(argv: List[str]) -> Args:
     sections = [
         "batteries",
         "controllers",
@@ -55,13 +58,14 @@ def parse_arguments(argv: List[str]) -> argparse.Namespace:
         "thermalSensors",
     ]
 
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = create_default_argument_parser(description=__doc__)
     # required
     parser.add_argument("-u",
                         "--user",
                         default=None,
                         help="Username for E-Series Login",
-                        required=True)
+                        required=True
+    )
     parser.add_argument(
         "-s",
         "--password",
@@ -79,7 +83,8 @@ def parse_arguments(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("-i",
                         "--system-id",
                         default=1,
-                        help="""Your E-Series System ID""")
+                        help="""Your E-Series System ID"""
+    )
     parser.add_argument(
         "-p",
         "--port",
@@ -99,13 +104,6 @@ def parse_arguments(argv: List[str]) -> argparse.Namespace:
         "--verify_ssl",
         action="store_true",
         default=False,
-    )
-    # debugging
-    parser.add_argument("-v", "--verbose", action="count", default=0)
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Debug mode: let Python exceptions come through",
     )
     parser.add_argument(
         "-w",
@@ -494,8 +492,7 @@ def main(argv: Any = None) -> int:
 
     controller_ids = get_storage_id_2_name_mappings(args, session, base_url)
 
-    fetch_storage_data(session, sections, args, base_url, controller_ids)
-
+    return special_agent_main(parse_arguments, fetch_storage_data(session, sections, args, base_url, controller_ids))
 
 if __name__ == "__main__":
     main()
