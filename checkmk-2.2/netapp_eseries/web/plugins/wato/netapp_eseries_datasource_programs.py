@@ -18,7 +18,7 @@
 from cmk.gui.i18n import _
 from cmk.gui.valuespec import (
     Dictionary,
-    TextAscii,
+    TextInput,
     DropdownChoice,
     Integer,
     ListChoice,
@@ -27,7 +27,7 @@ from cmk.gui.valuespec import (
 from cmk.gui.plugins.wato import (
     HostRulespec,
     rulespec_registry,
-    IndividualOrStoredPassword,
+    MigrateToIndividualOrStoredPassword
 )
 
 from cmk.gui.plugins.wato.datasource_programs import RulespecGroupDatasourceProgramsHardware
@@ -37,12 +37,12 @@ def _valuespec_special_agents_netappeseries():
     return Dictionary(
         title=_("Netapp E-Series via REST API"),
         elements=[
-            ("user", TextAscii(
+            ("user", TextInput(
                 help = _("Please use the user \"monitor\" available for this purpose on the E-Series instead of the \"admin\" user."),
                 title = _("Username"),
                 allow_empty = False,
             )),
-            ('password', IndividualOrStoredPassword(
+            ('password', MigrateToIndividualOrStoredPassword(
                 title=_("Password"),
                 allow_empty=False,
             )),
@@ -96,7 +96,7 @@ def _valuespec_special_agents_netappeseries():
                     ('https', _("https")),
                 ],
             )),
-            ("system-id", TextAscii(
+            ("system-id", TextInput(
                 title = _("Advanced - E-Series-System-ID"),
                 help = _("The System ID of your Netapp E-Series. Should always be 1 if not connected through a SANtricity Web Proxy"),
                 default_value = 1,
