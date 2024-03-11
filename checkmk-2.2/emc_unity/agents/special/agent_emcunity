@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+import getopt, os, sys, re, subprocess
+import cmk.utils.password_store
+from cmk.special_agents.utils.agent_common import special_agent_main
+from cmk.special_agents.utils.argument_parsing import Args, create_default_argument_parser
+
+from cmk.special_agents.utils import (
+    vcrtrace,
+)
+
+cmk.utils.password_store.replace_passwords()
+
+
+def usage():
+    sys.stderr.write("""Check_MK emcunity Agent
+
+USAGE: agent_emcunity [OPTIONS] HOST
+       agent_emcunity -h
+
+ARGUMENTS:
+   HOST                               Hostname or IP address of the target SP
+
+OPTIONS:
+  -h, --help                          Show this help message and exit
+  -u USER, --user=USER                Set the admin user
+  -p PASSWORD, --password=PASSWORD    Set the password for admin user
+  --debug                             Let python exeptions come through
+""")
+
+short_options = 'h:u:p:'
+long_options = [ 'help', 'user=', 'password=', 'debug' ]
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], short_options, long_options)
+except getopt.GetoptError as err:
+    sys.stderr.write("%s\n" % err)
+    sys.exit(1)
+
+opt_debug = False
+
+host = None
+user = None
+pw = None
+opt_debug = False
+lockbox = False
+
+for o,a in opts:
+    if o in [ '--debug' ]:
+        opt_debug = True
+    elif o in [ '-h', '--help' ]:
+        usage()
+        sys.exit(0)
+    elif o in [ '-u', '--user=' ]:
+        user = a
+    elif o in [ '-p', '--password=' ]:
+        pw = a
+
+if len(args) == 1:
+    host = args[0]
+elif not args:
+    sys.stderr.write("ERROR: No Host given.\n")
+    sys.exit(1)
+else:
+    sys.stderr.write("ERROR: Please specify exactly one host.\n")
+    sys.exit(1)
+
+# if no credentials are submitted by cmk, try lockbox stored credentials
+if not user and not pw:
+    lockbox = True
+
+if not user or not pw:
+    if lockbox == False:
+        sys.stderr.write("ERROR: Credentials are missing.\n")
+        sys.exit(1)
+
+cmdpath = "/usr/bin/uemcli"
+cmd = "uemcli"
+
+# Test if uemcli command is available
+if os.path.isfile(cmdpath) == False and os.access(cmdpath, os.X_OK) == False:
+    print("ERROR: Executable uemcli does not exist or is not executable!")
+    sys.exit(1)
+
+# set base command line with user/password or lockbox login
+if lockbox == False:
+    basecmd = "%s -noHeader -sslPolicy store -d %s -u %s -p %s " % (cmd, host, user, pw)
+else:
+    basecmd = "%s -noHeader -sslPolicy store -d %s " % (cmd, host)
+
+# EMC Unity firmware version as Check_MK version
+execline = "%s /sys/soft/ver show" % (basecmd)
+emcversion = ""
+
+cmdout = [ line.strip() for line in os.popen(execline + " 2>&1").readlines() ]
+
+for line in cmdout:
+    tokens = re.split("\s+", line)
+    if tokens[0] == "Version":
+        emcversion = tokens[2]
+
+print("<<<check_mk>>>")
+print("Version: %s %s" % (emcversion, os.environ['HOME']))
+
+# Hard coded items we want to check with uemcli
+checks = {
+    "battery"    : {"cmd_option" : "/env/bat show -detail"},
+    "pwrsupply"  : {"cmd_option" : "/env/ps show -detail"},
+    "fan"        : {"cmd_option" : "/env/fan show -detail"},
+    "memory"     : {"cmd_option" : "/env/mm show -detail"},
+    "dpe"        : {"cmd_option" : "/env/dpe show -detail"},
+    "sp"         : {"cmd_option" : "/env/sp show -detail"},
+    "disk"       : {"cmd_option" : "/env/disk show -detail"},
+    "ssd"        : {"cmd_option" : "/env/ssd show -detail"},
+    "general"    : {"cmd_option" : "/sys/general show -detail"},
+    "pool"       : {"cmd_option" : "/stor/config/pool show -detail"},
+    "lun"        : {"cmd_option" : "/stor/prov/luns/lun show -detail"},
+    "vmfs"       : {"cmd_option" : "/stor/prov/vmware/vmfs show -detail"},
+    "fs"         : {"cmd_option" : "/stor/prov/fs show -detail"},
+    "fc"         : {"cmd_option" : "/net/port/fc show -detail"},
+    "hostcons"       : {"cmd_option" : "/remote/host show -detail"},
+}
+
+metrics = {
+    "temp"    : {"cmd_option" : [ "/metrics/value/rt -path sp.*.platform.storageProcessorTemperature show -interval 5 -count 1 -output csv" ]},
+    "cpu"     : {"cmd_option" : [ "/metrics/value/rt -path sp.*.cpu.summary.utilization show -interval 5 -count 1 -output csv"]},
+}
+
+for check in checks.keys():
+    print('<<<emcunity_%s:sep(61)>>>' % (check))
+    execline = basecmd + checks[check]["cmd_option"]
+    for line in os.popen(execline).readlines():
+        print(line)
+
+for metric in metrics.keys():
+    print('<<<emcunity_%s:sep(44)>>>' % (metric))
+    for path in metrics[metric]["cmd_option"]:
+        execline = basecmd + path
+        for line in os.popen(execline).readlines()[1:]:
+            if line.strip() != '':
+                print(line)

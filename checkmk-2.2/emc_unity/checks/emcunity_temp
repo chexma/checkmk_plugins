@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# <<<emcunity_temp:sep(44)>>>
+# 2017-09-28 14:38:20,spa,20.00
+# 2017-09-28 14:38:20,spb,20.00
+from cmk.base.check_legacy_includes.temperature import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
+def inventory_emcunity_temp(info):
+    for line in info:
+        item = line[1]
+        yield item, None
+
+
+def check_emcunity_temp(item, params, info):
+    for line in info:
+        zone = line[1]
+        temp = line[2]
+        if item == zone:
+            return check_temperature(float(temp), params, "emcunity_temp_%s" % item)
+
+
+check_info["emcunity_temp"] = {
+    'check_function'         :    check_emcunity_temp,
+    'inventory_function'     :    inventory_emcunity_temp,
+    'service_description'    :    'Temperature %s',
+    'has_perfdata'           :    True,
+    'group'                  :    'temperature',
+}

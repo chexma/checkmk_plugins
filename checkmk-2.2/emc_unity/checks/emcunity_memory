@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# 1:    ID             = spb_mm_0
+      # SP             = spb
+      # Slot           = 0
+      # Name           = SP B Memory Module 0
+      # Health state   = OK (5)
+      # Health details = "The component is operating normally. No action is required."
+      # Manufacturer   = Samsung
+      # Model          = DDR4 SDRAM
+      # Part number    = 100-564-192-00
+      # Serial number  = 80AD01163881527BDE
+
+# 2:    ID             = spb_mm_1
+      # SP             = spb
+      # Slot           = 1
+      # Name           = SP B Memory Module 1
+      # Health state   = OK (5)
+      # Health details = "The component is operating normally. No action is required."
+      # Manufacturer   = Samsung
+      # Model          = DDR4 SDRAM
+      # Part number    = 100-564-192-00
+      # Serial number  = 80AD01163881527BE1
+
+def inventory_emcunity_memory(info):
+    keys = [ "Name", "Serial number" ]
+    mems = emcunity_parse_info(info, keys)
+    for mem in mems:
+        if mems[mem]["Serial number"] != "":
+            item = mems[mem]["Name"]
+            yield item, None
+
+
+def check_emcunity_memory(item, params, info):
+    keys = [ "Name", "Health state", "Health details", "Model" ]
+    mems = emcunity_parse_info(info, keys)
+    for mem in mems:
+        name = mems[mem]["Name"]
+        if name == item:
+            hstate = mems[mem]["Health state"]
+            hdetail = mems[mem]["Health details"]
+            model = mems[mem]["Model"]
+    return parse_emcstate(hstate), "%s, %s, Model: %s" % (hstate, hdetail, model)
+
+
+check_info["emcunity_memory"] = {
+    'check_function'         :    check_emcunity_memory,
+    'inventory_function'     :    inventory_emcunity_memory,
+    'service_description'    :    'HW %s',
+    'includes'               :    [ 'emcunity.include' ],
+}

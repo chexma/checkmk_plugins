@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# 1:    ID             = spb_ssd
+      # SP             = spb
+      # Slot           = 0
+      # Name           = SP B Internal Disk
+      # Health state   = OK (5)
+      # Health details = "The component is operating normally. No action is required."
+      # Manufacturer   =
+      # Model          = Intel DC 3500 Series SSDs M.2
+      # Part number    = INTEL SSDSCKHB080G4M           118000039
+      # Serial number  = BTWM69Q06C9A
+
+# 2:    ID             = spa_ssd
+      # SP             = spa
+      # Slot           = 0
+      # Name           = SP A Internal Disk
+      # Health state   = OK (5)
+      # Health details = "The component is operating normally. No action is required."
+      # Manufacturer   =
+      # Model          = Intel DC 3500 Series SSDs M.2
+      # Part number    = INTEL SSDSCKHB080G4M           118000039
+      # Serial number  = BTWM69P018ZA
+
+def inventory_emcunity_ssd(info):
+    keys = None
+    ssds = emcunity_parse_info(info, keys)
+    for ssd in ssds:
+        item = ssds[ssd]["Name"]
+        yield item, None
+
+
+def check_emcunity_ssd(item, params, info):
+    keys = [ "Name", "Health state", "Health details", "Model" ]
+    ssds = emcunity_parse_info(info, keys)
+    for ssd in ssds:
+        name = ssds[ssd]["Name"]
+        if name == item:
+            hstate = ssds[ssd]["Health state"]
+            hdetail = ssds[ssd]["Health details"]
+            model = ssds[ssd]["Model"]
+    return parse_emcstate(hstate), "%s, %s, Model: %s" % (hstate, hdetail, model)
+
+
+check_info["emcunity_ssd"] = {
+    'check_function'         :    check_emcunity_ssd,
+    'inventory_function'     :    inventory_emcunity_ssd,
+    'service_description'    :    'HW %s SSD',
+    'includes'               :    [ 'emcunity.include' ],
+}

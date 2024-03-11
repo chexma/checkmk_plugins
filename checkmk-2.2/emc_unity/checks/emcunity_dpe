@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# 1:    ID                            = dpe
+      # Slot                          = 0
+      # Name                          = DPE
+      # Health state                  = OK (5)
+      # Health details                = "The component is operating normally. No action is required."
+      # Manufacturer                  =
+      # Model                         = OBERON 25DRV 24GB 6C 85W 1.6G
+      # Part number                   = 100-542-921-10
+      # Serial number                 = CKM00164502222
+      # Power (Present)               = 351 watts
+      # Power (Rolling Average)       = 349 watts
+      # Temperature                   = 66° F (19° C)
+      # Temperature (Present)         = 66° F (19° C)
+      # Temperature (Rolling Average) = 66° F (19° C)
+
+def inventory_emcunity_dpe(info):
+    keys = None
+    dpes = emcunity_parse_info(info, keys)
+    for dpe in dpes:        
+        item = dpes[dpe]["Name"]
+        yield item, None
+
+
+def check_emcunity_dpe(item, params, info):
+    keys = [ "Name", "Health state", "Health details", "Power (Present)" ]
+    dpes = emcunity_parse_info(info, keys)
+    for dpe in dpes:
+        name = dpes[dpe]["Name"]
+        if name == item:
+            hstate = dpes[dpe]["Health state"]
+            hdetail = dpes[dpe]["Health details"]
+            pwr = dpes[dpe]["Power (Present)"]            
+    return parse_emcstate(hstate), "%s, %s, Power: %s" % (hstate, hdetail, pwr)
+
+
+check_info["emcunity_dpe"] = {
+    'check_function'         :    check_emcunity_dpe,
+    'inventory_function'     :    inventory_emcunity_dpe,
+    'service_description'    :    'HW Disk Processor Enclosure - %s',
+    'includes'               :    [ 'emcunity.include' ],
+}

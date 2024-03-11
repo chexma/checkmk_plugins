@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# 1:    ID                         = res_1
+      # LUN                        = sv_1
+      # Name                       = VMStore01
+      # Description                =
+      # Type
+      # Base storage resource
+      # Source
+      # Original parent
+      # Health state               = OK (5)
+      # Health details             = "The component is operating normally. No action is required."
+      # Storage pool ID            = pool_1
+      # Storage pool               = VMWare
+      # Size                       = 2199023255552 (2.0T)
+      # Maximum size               = 70368744177664 (64.0T)
+      # Thin provisioning enabled  = yes
+      # Compression enabled        = no
+      # Compression space saved    = 0
+      # Compression percent        = 0%
+      # Compression ratio          = 1:1
+      # Current allocation         = 713951363072 (664.9G)
+      # Protection size used       = 0
+      # Non-base size used
+      # Family size used
+      # Snapshot count             = 0
+      # Family snapshot count
+      # Family thin clone count
+      # Protection schedule        =
+      # Protection schedule paused = no
+      # SP owner                   = SPB
+      # Trespassed                 = no
+      # Version                    =
+      # Block size                 =
+      # Virtual disk access hosts  = Host_4, Host_5
+      # Snapshots access hosts     =
+      # WWN                        = 60:06:01:60:95:C0:42:00:8C:47:45:58:AD:BE:8D:11
+      # Replication destination    = no
+      # Creation time              = 2016-12-05 10:55:03
+      # Last modified time         = 2016-12-05 10:55:03
+      # FAST VP policy             = Start high then auto-tier
+      # FAST VP distribution       = Extreme Performance: 0%, Performance: 100%, Capacity: 0%
+      # IO limit                   =
+      # Effective maximum IOPS     = N/A
+      # Effective maximum KBPS     = N/A
+from cmk.base.check_legacy_includes.df import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from cmk.base.check_legacy_includes.size_trend import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
+def inventory_emcunity_vmfs(info):
+    keys = None
+    vmfs = emcunity_parse_info(info, keys)
+    for vmf in vmfs:
+        item = vmfs[vmf]["Name"]
+        yield item, None
+
+
+def check_emcunity_vmfs(item, params, info):
+    keys = [ "Name", "Health state", "Health details", "Size", "Current allocation" ]
+    vmfs = emcunity_parse_info(info, keys)
+    for vmf in vmfs:
+        name = vmfs[vmf]["Name"]
+        if name == item:
+            size_B = re.search("\d+", vmfs[vmf]["Size"].lstrip()).group(0)
+            used_B = re.search("\d+", vmfs[vmf]["Current allocation"].lstrip()).group(0)
+            used_mb = int(used_B) / 1024.0 / 1024.0
+            size_mb = int(size_B) / 1024.0 / 1024.0
+            avail_mb = size_mb - used_mb
+            hstate = vmfs[vmf]["Health state"]
+            hdetail = vmfs[vmf]["Health details"]
+            if hstate != "OK_BUT (7)":
+                emcstate = parse_emcstate(hstate)
+            else:
+                emcstate = 0
+            status, infotext, perfdata = df_check_filesystem_single(item, size_mb, avail_mb, 0, None, None, params)
+            infotext += ", EMC State: %s %s" % (hstate, hdetail)
+    if emcstate > status:
+        return emcstate, infotext, perfdata
+    else:
+        return status, infotext, perfdata
+
+
+check_info["emcunity_vmfs"] = {
+    'check_function'             :    check_emcunity_vmfs,
+    'inventory_function'         :    inventory_emcunity_vmfs,
+    'has_perfdata'               :    True,
+    'service_description'        :    'VMFS %s',
+    'includes'                   :    [ 'emcunity.include' ],
+    'group'                      :    "filesystem",
+    'default_levels_variable'    :    "filesystem_default_levels",
+}

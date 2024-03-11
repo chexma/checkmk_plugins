@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+# 1:    ID             = spb_bbu_0
+#       SP             = spb
+#       Slot           = 0
+#       Name           = SP B Battery 0
+#       Health state   = OK (5)
+#       Health details = "The component is operating normally. No action is required."
+#       Manufacturer   = ACBEL POLYTECH INC.
+#       Model          = LITHIUM-ION, UNIVERSAL BOB
+#       Part number    = 078-000-128-03
+#       Serial number  = ACPJ5163500528
+
+# 2:    ID             = spa_bbu_0
+# SP             = spa
+# Slot           = 0
+# Name           = SP A Battery 0
+# Health state   = OK (5)
+# Health details = "The component is operating normally. No action is required."
+# Manufacturer   = ACBEL POLYTECH INC.
+# Model          = LITHIUM-ION, UNIVERSAL BOB
+# Part number    = 078-000-128-03
+# Serial number  = ACPJ5163500516
+
+def inventory_emcunity_battery(info):
+    keys = None
+    bats = emcunity_parse_info(info, keys)
+    for bat in bats:        
+        item = bats[bat]["Name"]
+        yield item, None
+
+
+def check_emcunity_battery(item, params, info):
+    keys = [ "Name", "Health state", "Health details" ]
+    bats = emcunity_parse_info(info, keys)
+    for bat in bats:        
+        name = bats[bat]["Name"]
+        if name == item:
+            hstate = bats[bat]["Health state"]
+            hdetail = bats[bat]["Health details"]
+    return parse_emcstate(hstate), "%s, %s" % (hstate, hdetail)
+
+
+check_info["emcunity_battery"] = {
+    'check_function'         :    check_emcunity_battery,
+    'inventory_function'     :    inventory_emcunity_battery,
+    'service_description'    :    'HW %s',
+    'includes'               :    [ 'emcunity.include' ],
+}

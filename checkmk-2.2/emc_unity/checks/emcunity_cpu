@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# License: GNU General Public License v2
+
+# Written/Edited by Philipp Näther
+# philipp.naether@stadt-meissen.de
+# andreas.doehler@gmail.com
+
+#<<<emcunity_cpu:sep(44)>>>
+#2019-01-18 09:20:05,spa,19.51
+#2019-01-18 09:20:05,spb,9.161
+from cmk.base.check_legacy_includes.cpu_util import *  # pylint: disable=wildcard-import,unused-wildcard-import
+
+def inventory_emcunity_cpu(info):
+    for line in info:
+        item = line[1]
+        yield item, None
+
+
+def check_emcunity_cpu(item, params, info):
+    for line in info:
+        zone = line[1]
+        util = line[2]
+        if item == zone:
+            return check_cpu_util(float(util), params)
+
+
+check_info["emcunity_cpu"] = {
+    'check_function'         :    check_emcunity_cpu,
+    'inventory_function'     :    inventory_emcunity_cpu,
+    'service_description'    :    'CPU utilization %s',
+    'has_perfdata'           :    True,
+    'group'                  :    'cpu_utilization_multiitem',
+}
