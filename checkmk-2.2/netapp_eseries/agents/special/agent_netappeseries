@@ -297,7 +297,8 @@ def add_checkmk_item_identifier(section, controller_ids, section_data):
         'fc': 'fibre',
         'sas': 'sas',
         'iscsi': 'iscsi',
-        'pcie': 'pcie'
+        'pcie': 'pcie',
+        'ib' : 'ib'
     }
 
     unique_identifier = ""

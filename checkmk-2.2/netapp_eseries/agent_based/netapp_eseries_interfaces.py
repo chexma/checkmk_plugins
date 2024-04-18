@@ -39,6 +39,21 @@ register.agent_section(
 )
 
 
+interface_speeds = {
+"speed6gig"   : '6 GB SAS',
+"speed8gig"   : '8 GB Fibre Channel',
+"speed10gig"  : '10 GB Ethernet',
+"speed12gig"  : '12 GB SAS',
+"speed16gig"  : '16 GB Fibre Channel',
+"speed20gig"  : '20 GB Ethernet',
+"speed32gig"  : '32 GB Fibre Channel',
+"speed40gig"  : '40 GB Ethernet',
+"speed56gig"  : '56 GB Ethernet',
+"speed16gig"  : '64 GB Fibre Channel',
+"speed100gig" : '100 GB Ethernet',
+}
+
+
 def check_netapp_eseries_interfaces(item: str, params, section) -> CheckResult:
     data = section.get(item)
 
@@ -54,29 +69,92 @@ def check_netapp_eseries_interfaces(item: str, params, section) -> CheckResult:
         disk_write_throughput = round(data.get('performance').get('writeThroughput', 0), 3) * 1024 * 1024
 
     channel_type = data.get('channelType')
-
     interface_type = data.get("ioInterfaceTypeData").get("interfaceType")
     if interface_type == "fc":
-        interface_type = "fibre"
-
+            interface_type = "fibre"
     interface_data = data.get("ioInterfaceTypeData").get(interface_type)
-    if interface_type == "sas":
-        status = interface_data['iocPort']['state']
-    elif interface_type == "iscsi":
-        status = interface_data['interfaceData']['ethernetData']['linkStatus']
-    elif interface_type == "fibre":
-        status = interface_data['linkStatus']
-    elif interface_type == "pcie": 
-        channel = interface_data['channel']
-        status = f"driveside nvme - channel {channel} - status undefined"
-        
-    message = f"Port status: {status}"
 
-    if status not in ["optimal", "up"] and interface_type != 'pcie' :
-        state = State.WARN
-    else:
-        state = State.OK
-    yield Result(state=State(state), summary=message)
+    # Backend Ports (driveside)
+    if channel_type == "driveside":
+
+        if interface_type == "pcie": 
+            channel = interface_data['channel']
+            status = f"driveside nvme - channel {channel} - status undefined"
+        
+            current_interface_speed = interface_data['currentInterfaceSpeed'] # 'speed32gig',
+            maximum_interface_speed = interface_data['maximumInterfaceSpeed'] # 'speed32gig',
+            
+            message = f"Port status: {status}"
+            details = f"Port status: {status} \n"
+
+            state = State.OK
+        
+        if interface_type == "sas": 
+            channel = interface_data['channel']
+            status = interface_data['iocPort']['state']
+        
+            current_interface_speed = interface_data['currentInterfaceSpeed'] # 'speed32gig',
+            maximum_interface_speed = interface_data['maximumInterfaceSpeed'] # 'speed32gig',
+            is_degraded = interface_data['isDegraded']
+            
+            message = f"Port status: {status}"
+            details = f"Port status: {status} \n"
+            
+            if is_degraded != 'False' :
+                state = State.OK              
+            else:
+                state = State.WARN
+
+    # Frontend Ports (hostside)
+    elif channel_type == "hostside":
+            
+        if interface_type == "ib":
+            status = interface_data['linkState']
+            message = f"Port status: {status}"
+            details = f"Port status: {status} \n"
+                        # interface speed: {current_interface_speed} \n \
+                        # maximum speed: {maximum_interface_speed} \n \
+                        # configured speed: {speed_setting}
+
+        elif interface_type == "sas":
+            status = interface_data['iocPort']['state']
+            message = f"Port status: {status}"
+            details = f"Port status: {status} \n"
+                        # interface speed: {current_interface_speed} \n \
+                        # maximum speed: {maximum_interface_speed} \n \
+                        # configured speed: {speed_setting}
+
+        elif interface_type == "iscsi":
+            status = interface_data['interfaceData']['ethernetData']['linkStatus']
+            message = f"Port status: {status}"
+            details = f"Port status: {status} \n"
+                        # interface speed: {current_interface_speed} \n \
+                        # maximum speed: {maximum_interface_speed} \n \
+                        # configured speed: {speed_setting}
+        
+        elif interface_type == "fibre":
+            status = interface_data['linkStatus']
+            wwpn = interface_data['portName']
+            topology = interface_data['topology']
+            speed_setting = interface_data['speedControl']
+            current_interface_speed = interface_data['currentInterfaceSpeed'] # 'speed32gig',
+            maximum_interface_speed = interface_data['maximumInterfaceSpeed']# 'speed32gig',
+
+            message = f"Port status: {status}, wwwpn: {wwpn}, , interface speed: {current_interface_speed}"
+            details = f"Port status: {status} \n \
+                        Topology: {topology} \n \
+                        World Wide Portname: {wwpn} \n \
+                        interface speed: {current_interface_speed} \n \
+                        maximum speed: {maximum_interface_speed} \n \
+                        configured speed: {speed_setting} \
+            "
+
+        if status not in ["optimal", "up", "active"] :
+            state = State.WARN
+        else:
+            state = State.OK
+            
+    yield Result(state=State(state), summary=message, details=details)
 
     # Metrics
     if perfdata and status != 'down':
