@@ -11,11 +11,12 @@ param (
     [switch]$RegisterTls = $false,
     [switch]$RemoveAgentInstallationFile = $false,
 
-    [string]$CheckMkServer = "IP",
-    [string]$CheckMkSite = "Sitename",
-    [string]$RegistrationUser = "User",
-    [String]$RegistrationPassword = "password",
-    [String]$Servers = 'localhost',
+    [string]$CheckMkServer = "",
+    [string]$CheckMkSite = "",
+    [string]$RegistrationUser = "",
+    [string]$UpdaterUser = "",
+    [String]$RegistrationPassword = "",
+    [String]$UpdaterPassword = "`"`"",
 
     [ValidateSet('http', 'https')]
     [String]$protocol = 'https',
@@ -34,47 +35,34 @@ param (
 # This stuff can be manually configured to minimize necessary commandline parameters
 
 #$Servers = Get-Content "C:\temp\hosts.txt"
-#$Servers = 'localhost'
+$Servers = "a","b"
 
-$CheckMkAgentPackageName = "check-mk-agent21.msi"
-$CheckMkAgentSourceFolder = "c:\\temp\"
-
-############
-# Defaults #
-############
-
-# This stuff can be configured
+$CheckMkAgentPackageName = "check-mk-agent.msi"
+$CheckMkAgentSourceFolder = "c:\checkmk\"
 $CheckmkAgentDestinationFolder = "C:\Windows\TEMP\"
-$CheckMkAgentBinary = 'C:\Program Files (x86)\checkmk\service\check_mk_agent.exe'
-$CheckMkControllerBinary = 'C:\ProgramData\checkmk\agent\bin\cmk-agent-ctl.exe'
 
 ########
 # code #
 ########
 
-# Functions
+$CheckMkAgentBinary = 'C:\Program Files (x86)\checkmk\service\check_mk_agent.exe'
+$CheckMkControllerBinary = 'c:\Program Files (x86)\checkmk\service\cmk-agent-ctl.exe'
+$CheckMKAgentCopySourcePath = $CheckMkAgentSourceFolder + $CheckMkAgentPackageName
+$CheckMKAgentCopyDestinationPath = $CheckmkAgentDestinationFolder + $CheckMkAgentPackageName 
 
+#############
+# Functions #
+########### #
 function CreatePowershellSession {
-
-    if ( $debug ) {
-        # TODO Bessere Namen auswählen
-        write-host "Debug: Starting Powershell remote session to host $Server"
-    }
     
-    try {
-        $session = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose -Debug  #-Credential get-credential
-        if ( $debug ) {
+    $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose -Debug  #-Credential get-credential
+    if ( $debug ) {
             write-host "Debug: Sucessfully established Powershell remote session to host $Server"
         }
-    }
-    catch {
-        write-host $session
-        write-host "Error : unable to create Powershell Session"
-        break
-    }
 }
 
 # https://stackoverflow.com/a/38738942
+
 Function Write-Log {
     [CmdletBinding()]
     Param(
@@ -103,19 +91,26 @@ Function Write-Log {
 }
 
 function help {
-    write-host "commandline parameters:"
-
-    write-host "To adapt the hostname of the server to the name in checkmk, there are two possible functions:"
-    write-host "-domainsuffix   :   Add a suffix to the hostname"
-    write-host "-convertcase    :   Convert hostname of remote host to match hostname in checkmk. Possible choices: UPPERCASE,lowercase,Titlecase" 
+    write-host "Help:"
+    write-host "-----"
+    write-host "This script installs and registers the checkmk agent remotely via powershell remote."
     write-host ""
+    write-host "To adapt the hostname of the monitored host to its name in checkmk, there are two possible functions:"
+    write-host "-domainsuffix <suffix>  :   Add a suffix to the hostname"
+    write-host "-convertcase <case>     :   Convert hostname case of remote host to match hostname in checkmk. Possible choices: UPPERCASE,lowercase,Titlecase"
     write-host ""
-    write-host ""
-    write-host ""
+    write-host "Possible Actions (can be combined)"
+    write-host "-install                :   Copy a checkmk install package to the remote server and install it."
+    write-host "-registertls            :   Register agent for TLS"
+    write-host "-RegisterAgentUpdater   :   Register aent updater plugin"
+    write-host "-debug                  :   Show Debug output."
     write-host ""
     write-host "Examples:"
+    write-host ".\checkmk_agent_installer.ps1 -install"
+    write-host ".\checkmk_agent_installer.ps1 -install -registeragentupdater -registertls -convertcase lowercase"
+    write-host ".\checkmk_agent_installer.ps1 -registeragentupdater -registertls -convertcase lowercase -debug"
+    write-host ""
     #
-    write-host "Install Agent"
     exit 0
 }
 
@@ -142,7 +137,7 @@ function AddDomainSuffix {
 
 # get local hostname of the current remote Server
 function GetHostnameOfRemoteHost {
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
         $local_hostname = ($env:COMPUTERNAME)
         return $local_hostname
     }
@@ -159,7 +154,7 @@ function RewriteHostname {
 	)
 
     if ( $debug ) {
-        # TODO Bessere Namen auswählen
+        # TODO Bessere Namen auswÄ‚Â¤hlen
         write-host "Debug: Hostname conversion - Hostname in local hosts file: $Server, local hostname on remote server: $hostname"
     }
 
@@ -260,7 +255,7 @@ function DoConnectionTestsOnRemoteHost {
         # Do some basic connectivity checks on the remote host   
     if ( $debug ) {write-host "Debug: Starting basic connectivity tests on host $Server..."}
 
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
     
         if ( $registertls -or $registeragentupdater ) {
             # Test HTTP(s) access to the checkmk Server
@@ -309,7 +304,7 @@ function Check_Current_Deployment_State{
 
 # Test if checkmk binaries are installed
 function is_checkmk_agent_installed {
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
         if (-not( Test-Path -Path $CheckMkAgentBinary -Leaf) -or -not( Test-Path -Path $CheckMkControllerBinary -Leaf))  {
             write-host "checkmk agent is not installed in the given path"
             return false
@@ -320,14 +315,15 @@ function is_checkmk_agent_installed {
 # Copy Agent to monitored Host
 function CopyCheckmkAgent {
     write-host "Agent Installation - Starting to copy checkmk Agent to remote host $Server"
-    Invoke-Command -Session $session -ScriptBlock {
+    Copy-Item $CheckMKAgentCopySourcePath -Destination $CheckmkAgentDestinationFolder -ToSession $installsession
+    Invoke-Command -Session $installsession -ScriptBlock {
         
         if ( $Using:debug ) {
             write-host "Debug: Agent Installation - Copying checkmk agent from $Using:CheckMKAgentCopySourcePath to $Using:CheckmkAgentDestinationFolder on $Using:Server."
         }
 
         $StartTime = Get-Date
-        Copy-Item -Path $Using:CheckMKAgentCopySourcePath -Destination $Using:CheckmkAgentDestinationFolder
+        #Copy-Item -Path $Using:CheckMKAgentCopySourcePath -Destination $Using:CheckmkAgentDestinationFolder
         
         if ( $LASTEXITCODE -gt 0) { 
             write-host "Error: Agent Installation - Failed to copied the check_MK Agent to $Using:CheckmkAgentDestinationFolder on $Using:Server."
@@ -344,7 +340,7 @@ function CopyCheckmkAgent {
 # Install checkmk Agent
 function InstallCheckmkAgent {   
     write-host "Agent Installation - Installing checkmk Agent on $Server"
-    Invoke-Command -Session $session -ScriptBlock { 
+    Invoke-Command -Session $installsession -ScriptBlock { 
     
     $MSIInstallParameters = @('/I', $Using:CheckMKAgentCopyDestinationPath, '/quiet', '/norestart', '/qn' )
     $MSIInstallResult = Start-Process msiexec.exe -Wait -PassThru -ArgumentList $MSIInstallParameters
@@ -368,7 +364,7 @@ function RegisterAgentUpdater {
     )
 
     write-host "Registering checkmk agent updater plugin on $Server "
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
         
         # TODO Variable
         if (-not( Test-Path -Path "C:\Program Files (x86)\checkmk\service\check_mk_agent.exe" -PathType Leaf)) {
@@ -380,7 +376,7 @@ function RegisterAgentUpdater {
             write-host "Debug: Register Agent Updater - Register hostname is" $Using:hostname
         }
 
-        $agent_updater_parameters = @('updater', 'register','-H',$Using:hostname,'-U',$Using:RegistrationUser,'-P',$Using:RegistrationPassword,'-v')
+        $agent_updater_parameters = @('updater', 'register','-H',$Using:hostname,'-U',$Using:UpdaterUser,'-P',$Using:UpdaterPassword,'-v')
         if ( $Using:debug) {
             write-host "Debug: Full agent updater plugin command = $Using:CheckMkAgentBinary $agent_updater_parameters"
         }
@@ -390,9 +386,9 @@ function RegisterAgentUpdater {
             write-host "Debug: Register Agent Updater - Agent Updater registered successfully..."
             if ( $Using:debug) {
                 write-host "Debug: Register Agent Updater - Output of Agent Updater command:"
-                write-host "..."
+                write-host ""
                 write-host $register_updater_register_result|Out-String
-                write-host "..."
+                write-host ""
             }
         }    
         else {
@@ -413,7 +409,7 @@ function RegisterTls {
 
     write-host "Registering checkmk Agent TLS"
 
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
 
         if (-not( Test-Path -Path $Using:CheckMkControllerBinary -PathType Leaf)) {
             write-host "Error: Register agent TLS - checkmk agent controller binary is not installed in the given path."
@@ -428,7 +424,7 @@ function RegisterTls {
 
         $register_updater_register_tls_result = & $Using:CheckMkControllerBinary $agent_register_tls_parameters 2>&1
         
-        if ( $LASTEXITCODE -gt 0 ) {
+        if ( $LASTEXITCODE -eq 0 ) {
             write-host "Registering agent tls successfull."
         } 
         else {    
@@ -445,7 +441,7 @@ function RegisterTls {
 function ForceRefreshOfAgentUpdater {
     # Force Update to the correct checkmk agent immediately
     write-host "Forcing Agent Updater Refresh..."
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
 
         $agent_updater_parameters = @('updater', '-vf')
         if ( $Using:debug ) {
@@ -468,7 +464,7 @@ function ForceRefreshOfAgentUpdater {
 
 # remove Agent installation package
 function RemoveAgentMSIFile { 
-    Invoke-Command -Session $session -ScriptBlock {
+    Invoke-Command -Session $installsession -ScriptBlock {
         if ($Using:Debug) { write-host "Debug: Agent Installation - Deleting checkmk agent installation MSI File $Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName on Server $Server"}
         
         Remove-Item -Path "$Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName"
@@ -493,13 +489,13 @@ if ( $help) { help }
 
 foreach ($Server in $Servers)
     {
-
-    $CheckMKAgentCopySourcePath = $CheckMkAgentSourceFolder + $CheckMkAgentPackageName
-    #$CheckMKAgentCopyDestinationPath = $CheckmkAgentDestinationFolder + $CheckMkAgentPackageName    
+    
+    $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose -Debug  #-Credential get-credential
+    
+   
     $hostname = GetHostnameOfRemoteHost
     $hostname = RewriteHostname $hostname $convertcase $DomainSuffix
-
-    CreatePowershellSession
+        
     DoConnectionTestsOnRemoteHost
 
     if ( $install ){
@@ -520,8 +516,7 @@ foreach ($Server in $Servers)
         RegisterTls $hostname
     }
 
-    
-    Exit-PSSession
+    # Exit-PSSession
 }
 
 # TODO
