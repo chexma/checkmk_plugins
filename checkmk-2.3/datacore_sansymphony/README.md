@@ -51,16 +51,16 @@ If in doubt, talk to your DataCore Storage Consultant / Engineer.
 Installation in checkmk
 -----------------------
 
-1. Install the MKP file
-
-### 1.1 checkmk RAW Edition
+### 1. Install the MKP file
+-----------------------
 
 - Download the latest checkmk mkp package netapp_eseries-version.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
-- Make sure that the file is accessible by the "site user" of your monitoring site : `chown <site name> /tmp/netapp_eseries-<version>.mkp`
+- Make sure that the file is accessible by the "site user" of your monitoring site : `chown <site name> /tmp/datacore_sansymphony-<version>.mkp`
 - Switch to your site user with `su - <your_site_name>`
 - Change into the folder where you downloaded checkmk, e.g. `cd /tmp`
-- Install the package with `mkp install ./netapp_eseries-<version>.mkp`
+- Install the package with `mkp add ./datacore_sansymphony-<version>.mkp`
+- Install the package with `mkp enable datacore_sansymphony <version>
 - You can check if the package was successfully installed with the command `mkp list`
 - After the installation of the mkp you can delete the package file
 
@@ -69,7 +69,7 @@ https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
 ### 1.2 checkmk Enterprise, Free and Managed Services Edition
 
-- Download the latest checkmk mkp package netapp_eseries-version.mkp
+- Download the latest checkmk mkp package datacore_sansymphony-version.mkp
 - Open the checkmk Webinterface, select "Setup" - "Extension packages"
 - If the entry "Extension packages" is not shown, click on "show more" on the top right of the setup menu
 - Select "Upload package"
