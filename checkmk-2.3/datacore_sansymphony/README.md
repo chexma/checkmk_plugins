@@ -49,18 +49,41 @@ If in doubt, talk to your DataCore Storage Consultant / Engineer.
 
 
 Installation in checkmk
-#######################
+-----------------------
 
 1. Install the MKP file
 
-    1. Enterprise / Cloud Edition
+### 1.1 checkmk RAW Edition
 
-    2. Raw Edition
+- Download the latest checkmk mkp package netapp_eseries-version.mkp
+- Copy the file to your checkmk server, e.g. to /tmp
+- Make sure that the file is accessible by the "site user" of your monitoring site : `chown <site name> /tmp/netapp_eseries-<version>.mkp`
+- Switch to your site user with `su - <your_site_name>`
+- Change into the folder where you downloaded checkmk, e.g. `cd /tmp`
+- Install the package with `mkp install ./netapp_eseries-<version>.mkp`
+- You can check if the package was successfully installed with the command `mkp list`
+- After the installation of the mkp you can delete the package file
 
-. Add the sansymphony hosts to checkmk
+More Informations about installing mkps on the command line:
+https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
-. Configure the ruleset "DataCore SANsymphony via REST API"
+### 1.2 checkmk Enterprise, Free and Managed Services Edition
+
+- Download the latest checkmk mkp package netapp_eseries-version.mkp
+- Open the checkmk Webinterface, select "Setup" - "Extension packages"
+- If the entry "Extension packages" is not shown, click on "show more" on the top right of the setup menu
+- Select "Upload package"
+- Select the downloaded file and "Upload & install"
+
+More Informations about installing mkps in the checkmk webinterface:
+https://docs.checkmk.com/latest/en/mkps.html#wato
+
+
+3. Add the sansymphony hosts to checkmk
+
+4. Configure the ruleset "DataCore SANsymphony via REST API"
 
     - Username
     - Password from Password store
-    - 
+    - If the Sansymphony Server differs from the name in checkmk, enter the servername as shown in the SSV GUI
+    - Advanced Settings if necessary
