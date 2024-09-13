@@ -346,8 +346,8 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
             ("disk_write_ios", rate['TotalWrites']),
             ("disk_read_throughput", rate['TotalBytesRead']),
             ("disk_write_throughput", rate['TotalBytesWritten']),
-            ("disk_average_read_wait", average_read_latency),
-            ("disk_average_write_wait", average_write_latency),
+            ("read_latency", average_read_latency / 1000),
+            ("write_latency", average_write_latency / 1000),
         ]
         for description, metric in performance_metrics:
             yield Metric(description, metric)
