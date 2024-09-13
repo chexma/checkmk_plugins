@@ -79,14 +79,17 @@ def check_datacore_rest_alerts(params, section) -> CheckResult:
 
     alert_list = []
 
-    # Replace the {0} {1}... placeholders in the alert text string with the data from the MessageData dictionary
     for alert in section:
-        nr_of_placeholders = len(alert['MessageData'])
         text_string = alert['MessageText']
-        for message in range(nr_of_placeholders):
-            placeholder = "{" + str(message) + "}"
-            if placeholder in text_string:
-                text_string = text_string.replace(placeholder, alert['MessageData'][message])
+        
+        # Replace the {0} {1}... placeholders in the alert text string with the data from the MessageData dictionary
+        if alert['MessageData'] is not None:
+            nr_of_placeholders = len(alert['MessageData'])
+            text_string = alert['MessageText']
+            for message in range(nr_of_placeholders):
+                placeholder = "{" + str(message) + "}"
+                if placeholder in text_string:
+                    text_string = text_string.replace(placeholder, alert['MessageData'][message])
 
         if params['remove_support_bundle_messages'] == 'remove':
             if "Support bundle" in text_string:
@@ -99,7 +102,7 @@ def check_datacore_rest_alerts(params, section) -> CheckResult:
         yield Result(state=State.OK, summary='No alerts present')
         return
 
-    nr_of_alerts = len(alert_list)
+    nr_of_alerts = int(len(alert_list))
     sorted_alerts = sorted(alert_list, key=lambda x: x[0], reverse=True)
     top_ten_entries = sorted_alerts[:10]
 
