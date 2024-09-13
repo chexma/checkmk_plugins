@@ -51,8 +51,10 @@ If in doubt, talk to your DataCore Storage Consultant / Engineer.
 Installation in checkmk
 -----------------------
 
+This plugin is written with the new 2.3 check plugin API and will not work in older checkmk versions.
+
 ### 1. Install the MKP file
------------------------
+---------------------------
 
 - Download the latest checkmk mkp package netapp_eseries-version.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
@@ -60,9 +62,9 @@ Installation in checkmk
 - Switch to your site user with `su - <your_site_name>`
 - Change into the folder where you downloaded checkmk, e.g. `cd /tmp`
 - Install the package with `mkp add ./datacore_sansymphony-<version>.mkp`
-- Install the package with `mkp enable datacore_sansymphony <version>
+- Enable the package with `mkp enable datacore_sansymphony <version>`
 - You can check if the package was successfully installed with the command `mkp list`
-- After the installation of the mkp you can delete the package file
+- After the installation of the mkp you can delete the downloaded package file
 
 More Informations about installing mkps on the command line:
 https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
@@ -79,11 +81,35 @@ More Informations about installing mkps in the checkmk webinterface:
 https://docs.checkmk.com/latest/en/mkps.html#wato
 
 
-3. Add the sansymphony hosts to checkmk
+3. Add the SANsymphony hosts to checkmk
 
-4. Configure the ruleset "DataCore SANsymphony via REST API"
+This plugins connects to DataCore SANsymphony via the Rest API and fetches all SANsymphony related informations.
+If you want further OS related monitoring (e.g. CPU, RAM, Filesystems, Event Logs) you can additionally install the checkmk agent on the sansymphony servers.
+
+    - Add the hosts in setup
+    - Set "Checkmk agent / API integrations" to 
+        - "API integrations if configured, else checkmk agent" if you only want to monitor the servers via the REST API
+        - "API integrations if configured and checkmk agent" if you plan to install the checkmk agent on the servers
+
+I would recommend to create separate hosts to monitor the server hardware through the management boards (ideally with the redfish plugin)
+
+4. Add a password entry for the read only user to the password store
+    
+    - Setup / General / Passwords
+    - Add Password
+    - Enter a unique id, title and the password itself
+
+5. Configure the ruleset "DataCore SANsymphony via REST API"
+
+Enter the following informations
 
     - Username
     - Password from Password store
-    - If the Sansymphony Server differs from the name in checkmk, enter the servername as shown in the SSV GUI
-    - Advanced Settings if necessary
+    - If the Sansymphony server name differs from its name in checkmk, enter the servername as shown in the SSV GUI
+    - Configure the advanced settings if necessary
+
+6. Discover the hosts
+
+    - Select the sansymphony host in setup
+    - Save & run service discovery
+    - Activate the changes with the orange icon on the top right
