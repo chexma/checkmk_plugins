@@ -55,6 +55,7 @@ This plugin is written with the new 2.3 check plugin API and will not work in ol
 
 ### 1. Install the MKP file
 ---------------------------
+### 1.1 checkmk RAW Edition
 
 - Download the latest checkmk mkp package netapp_eseries-version.mkp
 - Copy the file to your checkmk server, e.g. to /tmp
@@ -69,7 +70,7 @@ This plugin is written with the new 2.3 check plugin API and will not work in ol
 More Informations about installing mkps on the command line:
 https://docs.checkmk.com/latest/en/mkps.html#_installation_of_an_mkp
 
-### 1.2 checkmk Enterprise, Free and Managed Services Edition
+### 1.2 checkmk Enterprise, Cloud, Free and Managed Services Edition
 
 - Download the latest checkmk mkp package datacore_sansymphony-version.mkp
 - Open the checkmk Webinterface, select "Setup" - "Extension packages"
@@ -86,30 +87,30 @@ https://docs.checkmk.com/latest/en/mkps.html#wato
 This plugins connects to DataCore SANsymphony via the Rest API and fetches all SANsymphony related informations.
 If you want further OS related monitoring (e.g. CPU, RAM, Filesystems, Event Logs) you can additionally install the checkmk agent on the sansymphony servers.
 
-    - Add the hosts in setup
-    - Set "Checkmk agent / API integrations" to 
-        - "API integrations if configured, else checkmk agent" if you only want to monitor the servers via the REST API
-        - "API integrations if configured and checkmk agent" if you plan to install the checkmk agent on the servers
+- Add the hosts in setup
+- Set "Checkmk agent / API integrations" to 
+    - "API integrations if configured, else checkmk agent" if you only want to monitor the servers via the REST API
+    - "API integrations if configured and checkmk agent" if you plan to install the checkmk agent on the servers
 
 I would recommend to create separate hosts to monitor the server hardware through the management boards (ideally with the redfish plugin)
 
 4. Add a password entry for the read only user to the password store
     
-    - Setup / General / Passwords
-    - Add Password
-    - Enter a unique id, title and the password itself
+- Setup / General / Passwords
+- Add Password
+- Enter a unique id, title and the password itself
 
 5. Configure the ruleset "DataCore SANsymphony via REST API"
 
 Enter the following informations
 
-    - Username
-    - Password from Password store
-    - If the Sansymphony server name differs from its name in checkmk, enter the servername as shown in the SSV GUI
-    - Configure the advanced settings if necessary
+- Username
+- Password from Password store
+- If the Sansymphony server name differs from its name in checkmk, enter the servername as shown in the SSV GUI
+- Configure the advanced settings if necessary
 
 6. Discover the hosts
 
-    - Select the sansymphony host in setup
-    - Save & run service discovery
-    - Activate the changes with the orange icon on the top right
+- Select the sansymphony host in setup
+- Save & run service discovery
+- Activate the changes with the orange icon on the top right
