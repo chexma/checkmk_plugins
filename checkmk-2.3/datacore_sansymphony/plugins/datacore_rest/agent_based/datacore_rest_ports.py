@@ -314,7 +314,7 @@ def check_datacore_rest_ports(item: str, params, section) -> CheckResult:
             performance_metrics.extend([
                 ("InvalidCrcCount", data['PerformanceData']['InvalidCrcCount']),
                 ("InvalidTransmissionWordCount", data['StateInfo']['LinkErrors']['InvalidTransmissionWordCount']),
-                ("LinkFailureCount", data['StateInfo']['LinkErrors']['InvalidTransmissionWordCount']),
+                ("LinkFailureCount", data['StateInfo']['LinkErrors']['LinkFailureCount']),
                 ("LossOfSignalCount", data['StateInfo']['LinkErrors']['LossOfSignalCount']),
                 ("LossOfSyncCount", data['StateInfo']['LinkErrors']['LossOfSyncCount']),
             ]
