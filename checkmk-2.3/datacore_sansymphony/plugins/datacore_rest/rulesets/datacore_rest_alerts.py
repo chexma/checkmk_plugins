@@ -33,15 +33,15 @@ def _parameter_valuespec_datacore_rest_alerts():
             ),
             "remove_support_bundle_messages": DictElement(
                 parameter_form=SingleChoice(
-                    title=Title("Remove SupportBundle collection messages from alerts"),
+                    title=Title("Ignore SupportBundle collection messages from alerts"),
                     elements=[
                         SingleChoiceElement(
                             name='remove',
-                            title=Title("Remove messages"),
+                            title=Title("Ignore messages"),
                         ),
                         SingleChoiceElement(
                             name='dont_remove',
-                            title=Title("Don´t remove messages"),
+                            title=Title("Don´t ignore messages"),
                         ),
                     ],
                     prefill=DefaultValue('remove'),
