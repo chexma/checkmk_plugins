@@ -85,8 +85,7 @@ https://docs.checkmk.com/latest/en/mkps.html#wato
 ### 3. Add the SANsymphony hosts to checkmk
 ---------------------------
 
-This plugins connects to DataCore SANsymphony via the Rest API and fetches all SANsymphony related informations.
-If you want further OS related monitoring (e.g. CPU, RAM, Filesystems, Event Logs) you can additionally install the checkmk agent on the sansymphony servers.
+This plugin connects to DataCore SANsymphony via the Rest API and fetches all SANsymphony related informations. The installation of the checkmk agent is not necessary for pure sansymphony monitoring, if you want further OS related monitoring (e.g. CPU, RAM, Filesystems, Event Logs) you can additionally install the checkmk agent on the sansymphony servers.
 
 - Add the hosts in setup
 - Set "Checkmk agent / API integrations" to 
