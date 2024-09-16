@@ -220,6 +220,8 @@ from cmk.agent_based.v2 import (
     get_rate
 )
 
+from cmk.agent_based.v1 import check_levels
+
 from cmk.plugins.lib.df import (
     Bytes,
     check_filesystem_levels,
@@ -281,18 +283,24 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
     if perfdata:
 
         # Pool Usage
-        pool_size = Bytes(int(data['Size']['Value']))
-        pool_free_space = Bytes(int(data['FreeSpace']['Value']))
-        pool_allocated = Bytes(pool_size - pool_free_space)
-        
-        pool_size_mb = pool_size / 1024.0**2
-        yield from check_filesystem_levels(
-            filesystem_size=pool_size_mb,
-            allocatable_filesystem_size=pool_size_mb,
-            free_space=pool_free_space / 1024.0**2,
-            used_space=pool_allocated / 1024.0**2,
-            params=params,
-        )
+        pool_size = data['Size']['Value']
+        pool_free = data['FreeSpace']['Value']
+        pool_allocated = pool_size - pool_free
+ 
+        warn, crit = params["levels"]
+
+        yield from check_levels(
+        100.0 * pool_allocated / pool_size,
+        levels_upper=(warn, crit),
+        metric_name="fs_used_percent",
+        render_func=render.percent,
+        boundaries=(0.0, 100.0),
+        label="Used",
+    )
+
+        yield Metric("fs_size", pool_size, boundaries=(0, None))
+        yield Metric("fs_free", pool_free, boundaries=(0, None))
+        yield Metric("fs_used", pool_allocated, boundaries=(0, None))
 
         raw_performance_counters = [
             "TotalReads",
