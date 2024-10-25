@@ -14,9 +14,17 @@
 
 # Metrics
 
-- Read / Write Ratio Metric definition-
+- Read / Write Ratio Metric definition
 - Server Metric Definitions
 - Metric Name Translation of "Average End to End Wait Time"
+
+#################
+# Bugs          #
+#################
+
+- Fix ZeroDivisionError (float division by zero) in Pool calculation when not a single IO was present during the check interval
+- Fix Sector Size {Value} shown in Physical Disks
+- FIx Dedup enabled: ['DeduplicationEnabled'] in Virtual Disks
 
 #################
 # check Plugins #
@@ -116,7 +124,7 @@ Physical Disks
 
 4. Configurable Parameters
 
-    - thresholds on latency
+
 
 Pools
 -----
@@ -137,6 +145,7 @@ Pools
 
     - thresholds on latency
     - Threshold on oversubscription in Bytes ?
+    - Implement Magic Factor
 
 Replication
 -----------
@@ -387,6 +396,9 @@ Physical Disks
     - Average Read / Write latency
 
 4. Configurable Thresholds
+
+    - thresholds on read/write latency
+    - thresholds on IO levels
 
 Hosts
 -----
