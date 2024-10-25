@@ -150,7 +150,7 @@ def check_datacore_rest_hosts(item: str, section) -> CheckResult:
         disconnected_ports = []
         # check if host is partially connected
         for port in host_ports:
-            if port['Status'] != 'Present' or port["Connected"] is False:
+            if port['Status'] not in ['Present', 'Connected'] or port["Connected"] is False:
                 disconnected_ports.append(port['Caption'])
         if len(disconnected_ports) > 0:
             message = f"Host is only partially connected, disconnected ports: {','.join(disconnected_ports)}"
