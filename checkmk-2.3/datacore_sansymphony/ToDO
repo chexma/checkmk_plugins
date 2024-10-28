@@ -6,11 +6,13 @@
 
 - Better type hints and Class definitions
 - More iSCSI related stuff, currently everything is probably very FC related
+- Create a SANsymphony Dashboard
 
 # Server Side Call
 
 - Set default protocol to https in ssc ruleset
 - Add Parameter for verify_ssl in ssc ruleset, current default is always verify=False
+- Yield host labels for a SANsyhomphony Dashboard
 
 # Metrics
 
