@@ -2,6 +2,8 @@
 # Andre Eckstein
 # Andre.Eckstein@Bechtle.com
 
+[CmdletBinding(PositionalBinding=$false)]
+
 param (
     [switch]$CleanInstall = $false,
     [switch]$Debug = $false,
