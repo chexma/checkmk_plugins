@@ -37,10 +37,10 @@ param (
 # This stuff can be manually configured to minimize necessary commandline parameters
 
 #$Servers = Get-Content "C:\temp\hosts.txt"
-$Servers = "ulm-smg02"
+$Servers = "myhostname-a", "myhostname-b"
 
-$CheckMkAgentPackageName = "check-mk-agent-2.3.0p27-1eee2e58f36495fc.msi"
-$CheckMkAgentSourceFolder = "C:\Users\jas\Downloads\"
+$CheckMkAgentPackageName = "check-mk-agent.msi"
+$CheckMkAgentSourceFolder = "C:\Pfad\zur\MSI\"
 $CheckmkAgentDestinationFolder = "C:\Windows\TEMP\"
 
 ########
@@ -57,7 +57,7 @@ $CheckMKAgentCopyDestinationPath = $CheckmkAgentDestinationFolder + $CheckMkAgen
 ########### #
 function CreatePowershellSession {
     
-    $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose #-Credential get-credential
+    $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose
     if ( $debug ) {
             write-host "Debug: Sucessfully established Powershell remote session to host $Server"
         }
