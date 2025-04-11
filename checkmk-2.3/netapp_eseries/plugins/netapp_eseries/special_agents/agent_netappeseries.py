@@ -155,9 +155,15 @@ def fetch_storage_data(session, sections, args, base_url, controller_ids):
 
             # fetch performance data of current section if available and add it to the items
             if section.perfdata_uri is not None:
-                section_perfdata = session.get(
-                    base_url + section.perfdata_uri, verify=args.verify_ssl
-                ).json()
+                try:
+                    section_perfdata = session.get(
+                        base_url + section.perfdata_uri, verify=args.verify_ssl
+                    ).json()
+                except requests.exceptions.JSONDecodeError as e:
+                    LOGGER.debug(
+                        f"Performance Data could not be handled: {e} - Sending empty section_perfdata."
+                    )
+                    section_perfdata = {}
 
                 # Section "System" is the only section that is not a list with multiple json/dict items, but json itself, so we 'list' it, to not break our looping
                 if section.name == "system":
