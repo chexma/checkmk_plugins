@@ -141,7 +141,7 @@ def check_datacore_rest_servergroups(item, section) -> CheckResult:
     else:
         smtp_settings = "Not configured"
 
-    if data['SyslogSettings'] is not None:
+    if 'SyslogSettings' in data and data['SyslogSettings'] is not None:
         syslog_settings = f"Syslog Server: {data['SyslogSettings']['SyslogServer']}, Log Level: {data['SyslogSettings']['SyslogLogLevel']}"
     else:
         syslog_settings = "Not configured"
