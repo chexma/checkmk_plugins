@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+# License: GNU General Public License v2
+
+import sys
+
+from cmk_addons.plugins.datacore_rest.special_agents.agent_datacore_rest import main
+
+if __name__ == "__main__":
+    sys.exit(main())

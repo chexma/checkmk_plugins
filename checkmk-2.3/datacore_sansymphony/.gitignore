@@ -1,0 +1,14 @@
+.coverage
+__pycache__
+debug.log
+/temp/*
+.env
+.flake8
+.devcontainer
+.git
+.pytest_cache
+.vscode
+lib
+nagios_plugins
+plugins_legacy
+package
