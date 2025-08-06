@@ -21,10 +21,14 @@ from pathlib import Path
 from typing import Any, List
 
 import requests
-from cmk.special_agents.v0_unstable.agent_common import (SectionWriter,
-                                                         special_agent_main)
+from cmk.special_agents.v0_unstable.agent_common import (
+    SectionWriter,
+    special_agent_main,
+)
 from cmk.special_agents.v0_unstable.argument_parsing import (
-    Args, create_default_argument_parser)
+    Args,
+    create_default_argument_parser,
+)
 from cmk.utils import password_store
 
 
@@ -45,21 +49,16 @@ def parse_arguments(argv: List[str]) -> Args:
     parser = create_default_argument_parser(description=__doc__)
 
     parser.add_argument(
-        "-u", "--user",
-        help="Username for DataCore Sansymphony V Login", 
-        required=True
+        "-u", "--user", help="Username for DataCore Sansymphony V Login", required=True
     )
     parser.add_argument(
         "-s",
         "--password_id",
         help="Password ID for DataCore Sansymphony V Login",
-        required=True
+        required=True,
     )
     parser.add_argument(
-        "-n",
-        "--nodename",
-        help="DataCore Node to fetch data for",
-        required=True
+        "-n", "--nodename", help="DataCore Node to fetch data for", required=True
     )
     parser.add_argument(
         "-P",
@@ -102,59 +101,86 @@ def get_session(args):
 def get_objects(object_name, api_url_base, headers, session, args):
     """Get section data e.g. virtualdisk, pools"""
     try:
-        logging.debug(f"Fetching the whole section {object_name} : {api_url_base}/{object_name}")
-        response = session.get(f'{api_url_base}/{object_name}', headers=headers, timeout=5, verify=args.verify_ssl)
+        logging.debug(
+            "Fetching the whole section %s : %s/%s",
+            object_name,
+            api_url_base,
+            object_name,
+        )
+        response = session.get(
+            f"{api_url_base}/{object_name}",
+            headers=headers,
+            timeout=5,
+            verify=args.verify_ssl,
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        logging.error(f"Error fetching {object_name} section: {e}")
+        logging.error("Error fetching %s section: %s", object_name, e)
         sys.exit(1)
 
 
-def request_object_perfdata(object, api_url_base, headers, session, args):
+def request_object_perfdata(data_object, api_url_base, headers, session, args):
     """Get perfdata for specific objects"""
     try:
-        logging.debug(f"Fetching performance data of single object: {api_url_base}/performance/{object['Id']}")
-        response = session.get(f'{api_url_base}/performance/{object["Id"]}', headers=headers, timeout=5, verify=args.verify_ssl)
+        logging.debug(
+            "Fetching performance data of single object: %s/performance/%s",
+            api_url_base,
+            data_object["Id"],
+        )
+        response = session.get(
+            f'{api_url_base}/performance/{data_object["Id"]}',
+            headers=headers,
+            timeout=5,
+            verify=args.verify_ssl,
+        )
         response.raise_for_status()
         perfdata = response.json()
 
         if perfdata:
-            object["PerformanceData"] = perfdata[0]
+            data_object["PerformanceData"] = perfdata[0]
         else:
-            logging.warning(f"No performance data returned for object ID: {object['Id']}")
-            object["PerformanceData"] = None
+            logging.warning(
+                "No performance data returned for object ID: %s", data_object['Id']
+            )
+            data_object["PerformanceData"] = None
 
-        return object
+        return data_object
     except requests.RequestException as e:
-        logging.error(f"Error fetching performance data for object ID {object['Id']}: {e}")
-        object["PerformanceData"] = None
-        return object
+        logging.error(
+            "Error fetching performance data for object ID %s: %s", data_object['Id'], e
+        )
+        data_object["PerformanceData"] = None
+        return data_object
 
 
 def add_perfdata(objects, api_url_base, headers, session, args):
     """Add Perfdata to objects"""
     result = []
     for item in objects:
-        updated_object = request_object_perfdata(item, api_url_base, headers, session, args)
+        updated_object = request_object_perfdata(
+            item, api_url_base, headers, session, args
+        )
         result.append(updated_object)
     return result
 
 
-def caption_from_id(id, json_data):
+def caption_from_id(data_id, json_data):
     """Get Caption for a given ID"""
     for item in json_data:
-        if item["Id"] == id:
+        if item["Id"] == data_id:
             return str(item["Caption"])
 
 
 def get_id_of_servername(servername, api_url_base, headers, session, args):
     """Get Server ID for a given SSV Servername"""
-    servers = get_objects('servers', api_url_base, headers, session, args)
+    servers = get_objects("servers", api_url_base, headers, session, args)
     for server in servers:
-        if server['Caption'].lower() == servername.lower():
-            logging.debug(f"Servername: {server['Caption']} - Server ID: {server['Id']}")
-            return server['Id']
+        if server["Caption"].lower() == servername.lower():
+            logging.debug(
+                "Servername: %s - Server ID: %s", server["Caption"], server["Id"]
+            )
+            return server["Id"]
 
 
 def agent_datacore_rest_main(args: Any = None) -> int:
@@ -166,56 +192,33 @@ def agent_datacore_rest_main(args: Any = None) -> int:
         "Section", ["name", "api_version", "has_perfdata", "item_identifier"]
     )
     sections = [
+        Section(name="alerts", api_version=1, has_perfdata=False, item_identifier=None),
+        Section(name="hosts", api_version=2, has_perfdata=True, item_identifier=None),
         Section(
-            name="alerts",
-            api_version=1,
-            has_perfdata=False,
-            item_identifier=None),
-        Section(
-            name="hosts",
-            api_version=2,
-            has_perfdata=True,
-            item_identifier=None),
-        Section(
-            name="hostgroups",
-            api_version=1,
-            has_perfdata=True,
-            item_identifier=None),
+            name="hostgroups", api_version=1, has_perfdata=True, item_identifier=None
+        ),
         Section(
             name="physicaldisks",
             api_version=2,
             has_perfdata=True,
-            item_identifier='HostId'),
+            item_identifier="HostId",
+        ),
         Section(
-            name="pools",
-            api_version=2,
-            has_perfdata=True,
-            item_identifier='ServerId'),
+            name="pools", api_version=2, has_perfdata=True, item_identifier="ServerId"
+        ),
         Section(
-            name="ports",
-            api_version=1,
-            has_perfdata=True,
-            item_identifier='HostId'),
+            name="ports", api_version=1, has_perfdata=True, item_identifier="HostId"
+        ),
         Section(
-            name="servergroups",
-            api_version=1,
-            has_perfdata=False,
-            item_identifier=None),
+            name="servergroups", api_version=1, has_perfdata=False, item_identifier=None
+        ),
+        Section(name="servers", api_version=2, has_perfdata=True, item_identifier="Id"),
         Section(
-            name="servers",
-            api_version=2,
-            has_perfdata=True,
-            item_identifier='Id'),
+            name="snapshots", api_version=1, has_perfdata=False, item_identifier=None
+        ),
         Section(
-            name="snapshots",
-            api_version=1,
-            has_perfdata=False,
-            item_identifier=None),
-        Section(
-            name="virtualdisks",
-            api_version=2,
-            has_perfdata=True,
-            item_identifier=None),
+            name="virtualdisks", api_version=2, has_perfdata=True, item_identifier=None
+        ),
     ]
 
     # Session erstellen
@@ -224,58 +227,68 @@ def agent_datacore_rest_main(args: Any = None) -> int:
     pw_id, pw_path = args.password_id.split(":")
     password = password_store.lookup(Path(pw_path), pw_id)
 
-    headers = {'ServerHost': args.nodename, 'Authorization': 'Basic ' + args.user + " " + password}
+    headers = {
+        "ServerHost": args.nodename,
+        "Authorization": "Basic " + args.user + " " + password,
+    }
     base_api_url = f"{args.proto}://{args.host}/RestService/rest.svc"
 
-    my_server_id = get_id_of_servername(args.nodename, f"{base_api_url}/1.0", headers, session, args)
+    my_server_id = get_id_of_servername(
+        args.nodename, f"{base_api_url}/1.0", headers, session, args
+    )
 
     resources_dict = {}
 
     for section in sections:
         if section.name in args.sections:
             api_url_base = f"{base_api_url}/{section.api_version}.0"
-            whole_section = get_objects(section.name, api_url_base, headers, session, args)
+            whole_section = get_objects(
+                section.name, api_url_base, headers, session, args
+            )
 
             if section.has_perfdata and section.api_version == 1:
-                resources_dict[section.name] = add_perfdata(whole_section, api_url_base, headers, session, args)
+                resources_dict[section.name] = add_perfdata(
+                    whole_section, api_url_base, headers, session, args
+                )
 
             # this can be optimized :  (physicaldisks api version is 2 but its perfdata is only available in 1...)
-            if section.name == 'physicaldisks':
+            if section.name == "physicaldisks":
                 api_url_base = f"{args.proto}://{args.host}/RestService/rest.svc/1.0"
-                resources_dict[section.name] = add_perfdata(whole_section, api_url_base, headers, session, args)
+                resources_dict[section.name] = add_perfdata(
+                    whole_section, api_url_base, headers, session, args
+                )
             else:
                 resources_dict[section.name] = whole_section
 
-    # Create Header for labels
-    sys.stdout.write("<<<check_mk>>>\n")
-    sys.stdout.write("Version: 2.3\n")
-    # manager_os = []
-    # if isinstance(manager_data, dict):
-    
-    sys.stdout.write("OSType: Storage\n")
-    sys.stdout.write("OSName: SANsymphony\n")
-    # get that from the resources_dict
-    sys.stdout.write("OSVersion: SANsymphony\n")
-    sys.stdout.write("OSPlatform: DataCore\n")
-    
     for section in sections:
         if section.name in resources_dict:
-            if section.name in ['alerts', 'snapshots']:
+            if section.name in ["alerts", "snapshots"]:
                 with SectionWriter(f"datacore_rest_{section.name}") as writer:
                     writer.append_json(resources_dict[section.name])
             else:
                 for item in resources_dict[section.name]:
-                    if section.name == 'virtualdisks':
-                        if not item['IsSnapshotVirtualDisk'] and (item['FirstHostId'] == my_server_id or item['SecondHostId'] == my_server_id):
-                            with SectionWriter(f"datacore_rest_{section.name}") as writer:
+                    if section.name == "virtualdisks":
+                        if not item["IsSnapshotVirtualDisk"] and (
+                            my_server_id in (item["FirstHostId"], item["SecondHostId"])
+                        ):
+                            with SectionWriter(
+                                f"datacore_rest_{section.name}"
+                            ) as writer:
                                 writer.append_json(item)
-                    elif section.name == 'ports':
-                        if item[section.item_identifier] == my_server_id and "Loopback" not in item['Caption']:
-                            with SectionWriter(f"datacore_rest_{section.name}") as writer:
+                    elif section.name == "ports":
+                        if (
+                            item[section.item_identifier] == my_server_id
+                            and "Loopback" not in item["Caption"]
+                        ):
+                            with SectionWriter(
+                                f"datacore_rest_{section.name}"
+                            ) as writer:
                                 writer.append_json(item)
                     elif section.item_identifier:
                         if item[section.item_identifier] == my_server_id:
-                            with SectionWriter(f"datacore_rest_{section.name}") as writer:
+                            with SectionWriter(
+                                f"datacore_rest_{section.name}"
+                            ) as writer:
                                 writer.append_json(item)
                     else:
                         with SectionWriter(f"datacore_rest_{section.name}") as writer:
@@ -287,5 +300,5 @@ def main() -> int:
     return special_agent_main(parse_arguments, agent_datacore_rest_main)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1573,7 +1573,7 @@ from cmk_addons.plugins.datacore_rest.lib import (
     parse_datacore_rest,
     discover_datacore_rest,
     convert_timestamp_to_epoch,
-    calculate_percentages
+    calculate_percentages,
 )
 
 from cmk.agent_based.v2 import (
@@ -1584,7 +1584,7 @@ from cmk.agent_based.v2 import (
     State,
     Metric,
     get_value_store,
-    get_rate
+    get_rate,
 )
 
 
@@ -1595,36 +1595,34 @@ def check_datacore_rest_servers(item: str, section) -> CheckResult:
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
     # Status
 
-    if not data['Status'] == "Running":
+    if not data["Status"] == "Running":
         message = f"SANsymphony Server is in state {data['Status']}"
         yield Result(state=State.CRIT, summary=message)
     else:
         message = "SANsymphony Server is running"
         yield Result(state=State.OK, summary=message)
 
-    if data['CacheState'] != 2:
+    if data["CacheState"] != 2:
         message = "Cache is disabled"
         yield Result(state=State.WARN, summary=message)
-    
+
     # Info
 
-    if data['IsLicensed'] is False:
+    if data["IsLicensed"] is False:
         message = "Server is not licensed"
         yield Result(state=State.WARN, summary=message)
 
-    if data['LicenseExceeded'] is True:
+    if data["LicenseExceeded"] is True:
         message = "License exceeded"
         yield Result(state=State.CRIT, summary=message)
 
-        
-
-# InUseCacheSize
-# LicenseRemaining
-# LicensedCapacityLimit
+    # InUseCacheSize
+    # LicenseRemaining
+    # LicensedCapacityLimit
 
     message = f"Version: {data['ProductVersion']}".replace(" ", "").replace(",", " ")
     details = f"Version: {data['ProductVersion']}\n Build: {data['ProductBuild']}\n OS: {data['OsVersion']}\n CPUs: {data['ProcessorInfo']['NumberCores']} x {data['ProcessorInfo']['ProcessorName']}"
@@ -1639,12 +1637,10 @@ def check_datacore_rest_servers(item: str, section) -> CheckResult:
             "TotalWrites",
             "TotalBytesRead",
             "TotalBytesWritten",
-
             "InitiatorReads",
             "InitiatorWrites",
             "InitiatorBytesRead",
             "InitiatorBytesWritten",
-
             "TargetReads",
             "TargetWrites",
             "TargetBytesRead",
@@ -1654,33 +1650,45 @@ def check_datacore_rest_servers(item: str, section) -> CheckResult:
         # get a reference to the value_store:
         value_store = get_value_store()
 
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(data['PerformanceData']['CollectionTime'])
+        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+            data["PerformanceData"]["CollectionTime"]
+        )
 
         rate = {}
 
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
 
         message = f"Read IO/s: {rate['TotalReads']}, Write IO/s: {rate['TotalWrites']}"
         yield Result(state=State.OK, summary=message)
 
         # Read / Write Ratio
         # TODO yield Metric
-        percent_read, percent_write = calculate_percentages(rate['TotalReads'], rate['TotalWrites'])
+        percent_read, percent_write = calculate_percentages(
+            rate["TotalReads"], rate["TotalWrites"]
+        )
 
         performance_metrics = [
-            ("disk_read_ios", rate['TotalReads']),
-            ("disk_write_ios", rate['TotalWrites']),
-            ("disk_read_throughput", rate['TotalBytesRead']),
-            ("disk_write_throughput", rate['TotalBytesWritten']),
-            ("ssv_initiator_reads", rate['InitiatorReads']),
-            ("ssv_initiator_writes", rate['InitiatorWrites']),
-            ("ssv_initiator_read_throughput", rate['InitiatorBytesRead']),
-            ("ssv_initiator_write_throughput", rate['InitiatorBytesWritten']),
-            ("ssv_target_reads", rate['TargetReads']),
-            ("ssv_target_writes", rate['TargetWrites']),
-            ("ssv_target_read_throughput", rate['TargetBytesRead']),
-            ("ssv_target_write_throughput", rate['TargetBytesWritten']),            
+            ("disk_read_ios", rate["TotalReads"]),
+            ("disk_write_ios", rate["TotalWrites"]),
+            ("disk_read_throughput", rate["TotalBytesRead"]),
+            ("disk_write_throughput", rate["TotalBytesWritten"]),
+            ("ssv_initiator_reads", rate["InitiatorReads"]),
+            ("ssv_initiator_writes", rate["InitiatorWrites"]),
+            ("ssv_initiator_read_throughput", rate["InitiatorBytesRead"]),
+            ("ssv_initiator_write_throughput", rate["InitiatorBytesWritten"]),
+            ("ssv_target_reads", rate["TargetReads"]),
+            ("ssv_target_writes", rate["TargetWrites"]),
+            ("ssv_target_read_throughput", rate["TargetBytesRead"]),
+            ("ssv_target_write_throughput", rate["TargetBytesWritten"]),
         ]
 
         for description, metric in performance_metrics:

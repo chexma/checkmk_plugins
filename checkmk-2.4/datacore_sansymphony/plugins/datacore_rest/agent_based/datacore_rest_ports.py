@@ -213,7 +213,7 @@ from cmk.agent_based.v2 import (
     render,
     get_value_store,
     check_levels,
-    get_rate
+    get_rate,
 )
 
 
@@ -223,7 +223,7 @@ def check_datacore_rest_ports(item: str, params, section) -> CheckResult:
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
     ##########
     # Status #
@@ -232,7 +232,7 @@ def check_datacore_rest_ports(item: str, params, section) -> CheckResult:
     # Connected
     if data["Connected"] is False:
         message = "Disconnected"
-        if params['expected_port_connection_status'] == 'connected':
+        if params["expected_port_connection_status"] == "connected":
             yield Result(state=State.WARN, summary=message)
         else:
             yield Result(state=State.OK, summary=message)
@@ -241,45 +241,48 @@ def check_datacore_rest_ports(item: str, params, section) -> CheckResult:
         yield Result(state=State.OK, summary=message)
 
     # Link errors
-    if 'StateInfo' in data:
-        for link_error_type in data['StateInfo']['LinkErrors']:
+    if "StateInfo" in data:
+        for link_error_type in data["StateInfo"]["LinkErrors"]:
             # We don´t need these
-            if link_error_type in ('TotalErrorCount', 'PrimitiveSeqProtocolErrCount'):
+            if link_error_type in ("TotalErrorCount", "PrimitiveSeqProtocolErrCount"):
                 break
-            
+
             upper_levels = params[link_error_type]
-            value = data['StateInfo']['LinkErrors'][link_error_type]
+            value = data["StateInfo"]["LinkErrors"][link_error_type]
 
-            yield from (check_levels(
-                value,
-                levels_upper=upper_levels,
-                label=link_error_type,
-                notice_only = True,
-            ))
+            yield from (
+                check_levels(
+                    value,
+                    levels_upper=upper_levels,
+                    label=link_error_type,
+                    notice_only=True,
+                )
+            )
 
-    ########
-    # Info #
-    ########
+        ########
+        # Info #
+        ########
 
-        details = \
-            f"PortName: {data['PortName']}\n"
+        details = f"PortName: {data['PortName']}\n"
 
-        if 'IdInfo' in data:
-            if 'PCIInfo' in data['IdInfo']:
-                pci_info = f"Slot {data['IdInfo']['PCIInfo']['Slot']}, " \
-                    f"Bus {data['IdInfo']["PCIInfo"]['Bus']}, " \
-                    f"Device {data['IdInfo']["PCIInfo"]['DeviceId']}, " \
+        if "IdInfo" in data:
+            if "PCIInfo" in data["IdInfo"]:
+                pci_info = (
+                    f"Slot {data['IdInfo']['PCIInfo']['Slot']}, "
+                    f"Bus {data['IdInfo']["PCIInfo"]['Bus']}, "
+                    f"Device {data['IdInfo']["PCIInfo"]['DeviceId']}, "
                     f"Function {data['IdInfo']["PCIInfo"]['Function']}"
+                )
 
                 details += f"PCI: {pci_info}\n"
 
-            if 'FirmwareVersion' in data['IdInfo']:
-                details += \
-                    f"Driver: {data['IdInfo']['DriverName']}\n" \
-                    f"Driver Version: {data['IdInfo']['DriverVersion']}\n" \
-                    f"Firmware Version: {data['IdInfo']['FirmwareVersion']}\n" \
-                    f"Type: {data['IdInfo']['HBAVendorName']} {data['IdInfo']['HBAProductName']}\n" \
-
+            if "FirmwareVersion" in data["IdInfo"]:
+                details += (
+                    f"Driver: {data['IdInfo']['DriverName']}\n"
+                    f"Driver Version: {data['IdInfo']['DriverVersion']}\n"
+                    f"Firmware Version: {data['IdInfo']['FirmwareVersion']}\n"
+                    f"Type: {data['IdInfo']['HBAVendorName']} {data['IdInfo']['HBAProductName']}\n"
+                )
         yield Result(state=State.OK, notice=message, details=details)
 
     ####################
@@ -288,36 +291,62 @@ def check_datacore_rest_ports(item: str, params, section) -> CheckResult:
 
     if perfdata:
 
-        raw_performance_counters = ["TotalReads", "TotalWrites", "TotalBytesRead", "TotalBytesWritten"]
+        raw_performance_counters = [
+            "TotalReads",
+            "TotalWrites",
+            "TotalBytesRead",
+            "TotalBytesWritten",
+        ]
 
         # get a reference to the value_store:
         value_store = get_value_store()
 
         current_collection_time_in_epoch = convert_timestamp_to_epoch(
-            data['PerformanceData']['CollectionTime']
+            data["PerformanceData"]["CollectionTime"]
         )
 
         rate = {}
 
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
 
         performance_metrics = [
-            ("disk_read_ios", rate['TotalReads']),
-            ("disk_write_ios", rate['TotalWrites']),
-            ("disk_read_throughput", rate['TotalBytesRead']),
-            ("disk_write_throughput", rate['TotalBytesWritten']),
+            ("disk_read_ios", rate["TotalReads"]),
+            ("disk_write_ios", rate["TotalWrites"]),
+            ("disk_read_throughput", rate["TotalBytesRead"]),
+            ("disk_write_throughput", rate["TotalBytesWritten"]),
         ]
 
         # StateInfo only present in FC port data
-        if 'StateInfo' in data:
-            performance_metrics.extend([
-                ("InvalidCrcCount", data['PerformanceData']['InvalidCrcCount']),
-                ("InvalidTransmissionWordCount", data['StateInfo']['LinkErrors']['InvalidTransmissionWordCount']),
-                ("LinkFailureCount", data['StateInfo']['LinkErrors']['LinkFailureCount']),
-                ("LossOfSignalCount", data['StateInfo']['LinkErrors']['LossOfSignalCount']),
-                ("LossOfSyncCount", data['StateInfo']['LinkErrors']['LossOfSyncCount']),
-            ]
+        if "StateInfo" in data:
+            performance_metrics.extend(
+                [
+                    ("InvalidCrcCount", data["PerformanceData"]["InvalidCrcCount"]),
+                    (
+                        "InvalidTransmissionWordCount",
+                        data["StateInfo"]["LinkErrors"]["InvalidTransmissionWordCount"],
+                    ),
+                    (
+                        "LinkFailureCount",
+                        data["StateInfo"]["LinkErrors"]["LinkFailureCount"],
+                    ),
+                    (
+                        "LossOfSignalCount",
+                        data["StateInfo"]["LinkErrors"]["LossOfSignalCount"],
+                    ),
+                    (
+                        "LossOfSyncCount",
+                        data["StateInfo"]["LinkErrors"]["LossOfSyncCount"],
+                    ),
+                ]
             )
         for description, metric in performance_metrics:
             yield Metric(description, metric)
@@ -340,12 +369,12 @@ check_plugin_datacore_rest_ports = CheckPlugin(
     discovery_function=discover_datacore_rest,
     check_function=check_datacore_rest_ports,
     check_default_parameters={
-        'InvalidCrcCount': ('fixed', (1, 2)),
-        'InvalidTransmissionWordCount': ('fixed', (1, 2)),
-        'LinkFailureCount': ('fixed', (1, 2)),
-        'LossOfSignalCount': ('fixed', (1, 2)),
-        'LossOfSyncCount': ('fixed', (1, 2)),
-        'expected_port_connection_status': 'connected'
+        "InvalidCrcCount": ("fixed", (1, 2)),
+        "InvalidTransmissionWordCount": ("fixed", (1, 2)),
+        "LinkFailureCount": ("fixed", (1, 2)),
+        "LossOfSignalCount": ("fixed", (1, 2)),
+        "LossOfSyncCount": ("fixed", (1, 2)),
+        "expected_port_connection_status": "connected",
     },
-    check_ruleset_name='datacore_rest_ports',
+    check_ruleset_name="datacore_rest_ports",
 )

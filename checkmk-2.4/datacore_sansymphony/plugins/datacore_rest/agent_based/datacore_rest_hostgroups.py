@@ -14,7 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-""""
+""" "
 Output:
 
 {
@@ -49,7 +49,7 @@ Output:
 
 from cmk_addons.plugins.datacore_rest.lib import (
     parse_datacore_rest,
-    discover_datacore_rest
+    discover_datacore_rest,
 )
 
 from cmk.agent_based.v2 import (
@@ -68,11 +68,19 @@ def check_datacore_rest_hostgroups(item: str, section) -> CheckResult:
     if data is None:
         return
 
-    max_io_ops_per_sec = data["StorageDomainSettings"]['MaxIoOperationsPerSec']
-    MaxIoOperationsPerSec = max_io_ops_per_sec if max_io_ops_per_sec > 0 else "not enforced"
+    max_io_ops_per_sec = data["StorageDomainSettings"]["MaxIoOperationsPerSec"]
+    MaxIoOperationsPerSec = (
+        max_io_ops_per_sec if max_io_ops_per_sec > 0 else "not enforced"
+    )
 
-    max_data_transferred_per_sec = data["StorageDomainSettings"]['MaxDataTransferredPerSec']
-    MaxDataTransferredPerSec = max_data_transferred_per_sec if max_data_transferred_per_sec > 0 else "not enforced"
+    max_data_transferred_per_sec = data["StorageDomainSettings"][
+        "MaxDataTransferredPerSec"
+    ]
+    MaxDataTransferredPerSec = (
+        max_data_transferred_per_sec
+        if max_data_transferred_per_sec > 0
+        else "not enforced"
+    )
 
     message = f"{data['Alias']} - Max Operations per Sec: {MaxIoOperationsPerSec}, Max Data Transferred Per Sec: {MaxDataTransferredPerSec}, ChargeBack enabled: {data["StorageDomainSettings"]['ChargeBackEnabled']}"
 

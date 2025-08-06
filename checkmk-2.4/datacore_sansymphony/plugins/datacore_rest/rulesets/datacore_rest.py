@@ -31,20 +31,16 @@ from cmk.rulesets.v1.form_specs import (
 
 from cmk.rulesets.v1.rule_specs import Topic, SpecialAgent
 
-from cmk.rulesets.v1.form_specs.validators import LengthInRange
-
 
 def _valuespec_special_agents_datacore_rest() -> Dictionary:
     return Dictionary(
         elements={
             "user": DictElement(
                 parameter_form=String(
-                    title = Title("Username"),
-                    help_text=Help(
-                        "User Account to login to the Sansymphony Rest API"
-                    ),
+                    title=Title("Username"),
+                    help_text=Help("User Account to login to the Sansymphony Rest API"),
                 ),
-                required=True
+                required=True,
             ),
             "password": DictElement(
                 parameter_form=Password(
@@ -56,40 +52,51 @@ def _valuespec_special_agents_datacore_rest() -> Dictionary:
             "sections": DictElement(
                 parameter_form=MultipleChoice(
                     title=Title("Retrieve information about..."),
-                    elements = [
+                    elements=[
                         MultipleChoiceElement(
-                            name="alerts", title=Title("Alerts"),
+                            name="alerts",
+                            title=Title("Alerts"),
                         ),
                         MultipleChoiceElement(
-                            name="hosts", title=Title("Hosts (SAN Clients)"),
+                            name="hosts",
+                            title=Title("Hosts (SAN Clients)"),
                         ),
                         MultipleChoiceElement(
-                            name="hostgroups", title=Title("Hostgroups"),
+                            name="hostgroups",
+                            title=Title("Hostgroups"),
                         ),
                         MultipleChoiceElement(
-                            name="physicaldisks", title=Title("Physical Disks"),
+                            name="physicaldisks",
+                            title=Title("Physical Disks"),
                         ),
                         MultipleChoiceElement(
-                            name="pools", title=Title("Pools"),
+                            name="pools",
+                            title=Title("Pools"),
                         ),
                         MultipleChoiceElement(
-                            name="ports", title=Title("Ports (FC, iSCSI)"),
+                            name="ports",
+                            title=Title("Ports (FC, iSCSI)"),
                         ),
                         MultipleChoiceElement(
-                            name="servergroups", title=Title("Servergroups"),
+                            name="servergroups",
+                            title=Title("Servergroups"),
                         ),
                         MultipleChoiceElement(
-                            name="servers", title=Title("Servers"),
+                            name="servers",
+                            title=Title("Servers"),
                         ),
                         MultipleChoiceElement(
-                            name="snapshots", title=Title("Snapshots"),
+                            name="snapshots",
+                            title=Title("Snapshots"),
                         ),
                         MultipleChoiceElement(
-                            name="virtualdisks", title=Title("Virtual Disks"),
+                            name="virtualdisks",
+                            title=Title("Virtual Disks"),
                         ),
                     ],
                     prefill=DefaultValue(
-                        [   "alerts",
+                        [
+                            "alerts",
                             "hosts",
                             "hostgroups",
                             "physicaldisks",
@@ -130,7 +137,7 @@ def _valuespec_special_agents_datacore_rest() -> Dictionary:
             ),
             "nodename": DictElement(
                 parameter_form=String(
-                    title = Title("Advanced - Sansymphony Servername to fetch infos for"),
+                    title=Title("Advanced - Sansymphony Servername to fetch infos for"),
                     help_text=Help(
                         "This is necessary, if the Sansymphony internal server name differs from your hostname in checkmk"
                     ),

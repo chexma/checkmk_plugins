@@ -144,7 +144,7 @@ from cmk_addons.plugins.datacore_rest.lib import (
     parse_datacore_rest,
     discover_datacore_rest,
     convert_timestamp_to_epoch,
-    calculate_percentages
+    calculate_percentages,
 )
 
 from cmk.agent_based.v2 import (
@@ -157,7 +157,7 @@ from cmk.agent_based.v2 import (
     render,
     get_value_store,
     get_rate,
-    check_levels
+    check_levels,
 )
 
 
@@ -168,7 +168,7 @@ def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
     # pprint.pprint(data)
 
@@ -176,19 +176,19 @@ def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
     # Status #
     ##########
 
-    virtualdisk_status = data['Status']
-    virtualdisk_is_offline = data['Offline']
-    virtualdisk_is_disabled = data['Disabled']
-    virtualdisk_is_served = data['IsServed']
-    write_through = data['WriteThrough']
+    virtualdisk_status = data["Status"]
+    virtualdisk_is_offline = data["Offline"]
+    virtualdisk_is_disabled = data["Disabled"]
+    virtualdisk_is_served = data["IsServed"]
+    write_through = data["WriteThrough"]
 
     if virtualdisk_status == "Healthy":
         yield Result(state=State.OK, summary=virtualdisk_status)
     else:
         if virtualdisk_status == "Path down":
-            if params['virtual_disk_path_down'] == 'path_down_is_warning':
+            if params["virtual_disk_path_down"] == "path_down_is_warning":
                 yield Result(state=State.WARN, summary=virtualdisk_status)
-            elif params['virtual_disk_path_down'] == 'path_down_is_ok':
+            elif params["virtual_disk_path_down"] == "path_down_is_ok":
                 yield Result(state=State.OK, summary=virtualdisk_status)
         elif "In full recovery" in virtualdisk_status:
             yield Result(state=State.CRIT, summary=virtualdisk_status)
@@ -205,7 +205,7 @@ def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
 
     if not virtualdisk_is_served:
         message = "Virtual Disk is not served to any host"
-        if params['expected_mapping'] == 'virtual_disk_is_not_served':
+        if params["expected_mapping"] == "virtual_disk_is_not_served":
             yield Result(state=State.OK, summary=message)
         else:
             yield Result(state=State.WARN, summary=message)
@@ -218,21 +218,23 @@ def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
     # Info #
     ########
 
-    size = data['Size']['Value']
-    recovery_priority = data['RecoveryPriority']
-    sector_size = data['SectorSize']['Value']
-    writethrough_enabled = data['WriteThrough']
-    compression_enabled = data['CompressionEnabled']
-    dedup_enabled = ['DeduplicationEnabled']
-    encryption_enabled = data['EncryptionEnabled']
+    size = data["Size"]["Value"]
+    recovery_priority = data["RecoveryPriority"]
+    sector_size = data["SectorSize"]["Value"]
+    writethrough_enabled = data["WriteThrough"]
+    compression_enabled = data["CompressionEnabled"]
+    dedup_enabled = ["DeduplicationEnabled"]
+    encryption_enabled = data["EncryptionEnabled"]
     sector_size_unit = "B" if sector_size == 512 else "K"
 
-    details = f"Recovery Priority: {recovery_priority}\n" \
-        f"Compression enabled: {compression_enabled}\n" \
-        f"Dedup enabled: {dedup_enabled}\n" \
-        f"Encryption Enabled: {encryption_enabled}\n" \
-        f"Write Through: {writethrough_enabled}\n" \
+    details = (
+        f"Recovery Priority: {recovery_priority}\n"
+        f"Compression enabled: {compression_enabled}\n"
+        f"Dedup enabled: {dedup_enabled}\n"
+        f"Encryption Enabled: {encryption_enabled}\n"
+        f"Write Through: {writethrough_enabled}\n"
         f"Sector Size: {sector_size}{sector_size_unit}"
+    )
 
     message = f"Size: {render.bytes(size)}"
     yield Result(state=State(0), summary=message, details=details)
@@ -242,39 +244,61 @@ def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
     ####################
 
     if perfdata:
-        raw_performance_counters = ["TotalReads", "TotalWrites", "TotalBytesRead", "TotalBytesWritten"]
+        raw_performance_counters = [
+            "TotalReads",
+            "TotalWrites",
+            "TotalBytesRead",
+            "TotalBytesWritten",
+        ]
 
         # get a reference to the value_store:
         value_store = get_value_store()
 
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(data['PerformanceData']['CollectionTime'])
+        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+            data["PerformanceData"]["CollectionTime"]
+        )
 
         rate = {}
 
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
 
-        write_io_levels_upper = params['write_io_levels_upper']
-        write_io_levels_lower = params['write_io_levels_lower']
+        write_io_levels_upper = params["write_io_levels_upper"]
+        write_io_levels_lower = params["write_io_levels_lower"]
 
-        yield from (check_levels(
-                rate['TotalWrites'],
+        yield from (
+            check_levels(
+                rate["TotalWrites"],
                 levels_upper=write_io_levels_upper,
                 levels_lower=write_io_levels_lower,
-                label='Write IO/s',
+                label="Write IO/s",
                 notice_only=False,
-            ))
+            )
+        )
 
-        yield Metric("disk_read_ios", rate['TotalReads'])
-        yield Metric("disk_write_ios", rate['TotalWrites'])
-        yield Metric("disk_read_throughput", rate['TotalBytesRead'])
-        yield Metric("disk_write_throughput", rate['TotalBytesWritten'])
-        yield Metric("percent_allocated", data['PerformanceData']['PercentAllocated'])
-        yield Metric("initialization_percentage", data['PerformanceData']['InitializationPercentage'])
+        yield Metric("disk_read_ios", rate["TotalReads"])
+        yield Metric("disk_write_ios", rate["TotalWrites"])
+        yield Metric("disk_read_throughput", rate["TotalBytesRead"])
+        yield Metric("disk_write_throughput", rate["TotalBytesWritten"])
+        yield Metric("percent_allocated", data["PerformanceData"]["PercentAllocated"])
+        yield Metric(
+            "initialization_percentage",
+            data["PerformanceData"]["InitializationPercentage"],
+        )
 
         # Read / Write Ratio
 
-        percent_read, percent_write = calculate_percentages(rate['TotalReads'], rate['TotalWrites'])
+        percent_read, percent_write = calculate_percentages(
+            rate["TotalReads"], rate["TotalWrites"]
+        )
         message = f"Read/Write Ratio: {round(percent_read)}/{round(percent_write)}%"
         yield Result(state=State.OK, summary=message)
 
@@ -293,12 +317,12 @@ check_plugin_datacore_rest_virtualdisks = CheckPlugin(
     discovery_function=discover_datacore_rest,
     check_function=check_datacore_rest_virtualdisks,
     check_default_parameters={
-        'virtual_disk_path_down': 'path_down_is_warning',
-        'expected_mapping': 'virtual_disk_is_served',
-        'write_io_levels_upper': ('no_levels', None),
-        'write_io_levels_lower': ('no_levels', None),
-        'upper_read_latency_levels': ('no_levels', None),
-        'upper_write_latency_levels': ('no_levels', None),
+        "virtual_disk_path_down": "path_down_is_warning",
+        "expected_mapping": "virtual_disk_is_served",
+        "write_io_levels_upper": ("no_levels", None),
+        "write_io_levels_lower": ("no_levels", None),
+        "upper_read_latency_levels": ("no_levels", None),
+        "upper_write_latency_levels": ("no_levels", None),
     },
-    check_ruleset_name='datacore_rest_virtualdisks',
+    check_ruleset_name="datacore_rest_virtualdisks",
 )

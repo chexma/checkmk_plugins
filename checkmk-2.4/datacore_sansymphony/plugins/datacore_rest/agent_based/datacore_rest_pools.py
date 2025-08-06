@@ -14,7 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-""""
+""" "
 Output:
 
 {
@@ -205,7 +205,7 @@ from cmk_addons.plugins.datacore_rest.lib import (
     parse_datacore_rest,
     discover_datacore_rest,
     convert_timestamp_to_epoch,
-    calculate_percentages
+    calculate_percentages,
 )
 
 from cmk.agent_based.v2 import (
@@ -217,14 +217,12 @@ from cmk.agent_based.v2 import (
     Metric,
     render,
     get_value_store,
-    get_rate
+    get_rate,
 )
 
 from cmk.agent_based.v1 import check_levels
 
 from cmk.plugins.lib.df import (
-    Bytes,
-    check_filesystem_levels,
     FILESYSTEM_DEFAULT_LEVELS,
     MAGIC_FACTOR_DEFAULT_PARAMS,
 )
@@ -239,13 +237,13 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
     ##########
     # Status #
     ##########
 
-    if not data['Status'] == "Running":
+    if not data["Status"] == "Running":
         message = f"Pool status: {data['Status']}"
         yield Result(state=State.CRIT, summary=message)
     else:
@@ -253,28 +251,32 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         yield Result(state=State.OK, summary=message)
 
     if int(data["PerformanceData"]["BytesOverSubscribed"]) > 0:
-        message = f"Pool is oversubscribed with " \
+        message = (
+            f"Pool is oversubscribed with "
             f"{render.bytes(data["PerformanceData"]["BytesOverSubscribed"])}"
+        )
         yield Result(state=State.CRIT, summary=message)
 
     ########
     # Info #
     ########
 
-    sector_size = int(data['SectorSize']['Value'])
+    sector_size = int(data["SectorSize"]["Value"])
     sector_size_unit = "B" if sector_size == 512 else "K"
 
     pool_members = []
     for member in data["PoolMembers"]:
         pool_members.append(f"{member["Caption"]}")
 
-    details = f"Max. Nr. of tiers: {data['MaxTierNumber']}\n" \
-        f"Tier Reservation: {data['TierReservedPct']}%\n" \
-        f"Nr. of physical disks: {len(data['PoolMembers'])} \n" \
-        f"Physical Disks: {",".join(pool_members)} \n" \
+    details = (
+        f"Max. Nr. of tiers: {data['MaxTierNumber']}\n"
+        f"Tier Reservation: {data['TierReservedPct']}%\n"
+        f"Nr. of physical disks: {len(data['PoolMembers'])} \n"
+        f"Physical Disks: {",".join(pool_members)} \n"
         f"Sector Size: {sector_size}{sector_size_unit}"
+    )
 
-    yield Result(state=State.OK, notice = "test", details=details)
+    yield Result(state=State.OK, notice="test", details=details)
 
     ####################
     # Performance Data #
@@ -283,20 +285,20 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
     if perfdata:
 
         # Pool Usage
-        pool_size = data['Size']['Value']
-        pool_free = data['FreeSpace']['Value']
+        pool_size = data["Size"]["Value"]
+        pool_free = data["FreeSpace"]["Value"]
         pool_allocated = pool_size - pool_free
- 
+
         warn, crit = params["levels"]
 
         yield from check_levels(
-        100.0 * pool_allocated / pool_size,
-        levels_upper=(warn, crit),
-        metric_name="fs_used_percent",
-        render_func=render.percent,
-        boundaries=(0.0, 100.0),
-        label="Used",
-    )
+            100.0 * pool_allocated / pool_size,
+            levels_upper=(warn, crit),
+            metric_name="fs_used_percent",
+            render_func=render.percent,
+            boundaries=(0.0, 100.0),
+            label="Used",
+        )
 
         yield Metric("fs_size", pool_size, boundaries=(0, None))
         yield Metric("fs_free", pool_free, boundaries=(0, None))
@@ -315,16 +317,26 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         value_store = get_value_store()
 
         current_collection_time_in_epoch = convert_timestamp_to_epoch(
-            data['PerformanceData']['CollectionTime']
+            data["PerformanceData"]["CollectionTime"]
         )
 
         rate = {}
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
-        
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
+
         # Read / Write Ratio
 
-        percent_read, percent_write = calculate_percentages(rate['TotalReads'], rate['TotalWrites'])
+        percent_read, percent_write = calculate_percentages(
+            rate["TotalReads"], rate["TotalWrites"]
+        )
         message = f"Read/Write Ratio: {int(round(percent_read, 0))}/{int(round(percent_write, 0))}%"
         yield Result(state=State.OK, summary=message)
 
@@ -334,13 +346,17 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         #  $AverageTimeperWrite = $PhysicalDisk1PerformanceReading.TotalWritesTime / $PhysicalDisk1PerformanceReading.TotalWrites
 
         # Only divide if new data was written
-        if rate['TotalReads'] > 0:
-            average_read_latency = round((rate['TotalReadTime'] / rate['TotalReads']),2)
+        if rate["TotalReads"] > 0:
+            average_read_latency = round(
+                (rate["TotalReadTime"] / rate["TotalReads"]), 2
+            )
         else:
             average_read_latency = 0
 
-        if rate['TotalWrites'] > 0:
-            average_write_latency = round((rate['TotalWriteTime'] / rate['TotalWrites']),2)
+        if rate["TotalWrites"] > 0:
+            average_write_latency = round(
+                (rate["TotalWriteTime"] / rate["TotalWrites"]), 2
+            )
         else:
             average_write_latency = 0
 
@@ -350,10 +366,10 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         # yield all metrics
 
         performance_metrics = [
-            ("disk_read_ios", rate['TotalReads']),
-            ("disk_write_ios", rate['TotalWrites']),
-            ("disk_read_throughput", rate['TotalBytesRead']),
-            ("disk_write_throughput", rate['TotalBytesWritten']),
+            ("disk_read_ios", rate["TotalReads"]),
+            ("disk_write_ios", rate["TotalWrites"]),
+            ("disk_read_throughput", rate["TotalBytesRead"]),
+            ("disk_write_throughput", rate["TotalBytesWritten"]),
             ("read_latency", average_read_latency / 1000),
             ("write_latency", average_write_latency / 1000),
         ]

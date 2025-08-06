@@ -2,7 +2,7 @@
 """Ruleset definition for DataCore Sansymphony Ports"""
 
 
-from cmk.rulesets.v1 import Help, Title
+from cmk.rulesets.v1 import Title
 from cmk.rulesets.v1.form_specs import (
     DictElement,
     Dictionary,

@@ -108,7 +108,7 @@ from cmk.agent_based.v2 import (
     render,
     get_value_store,
     get_rate,
-    check_levels
+    check_levels,
 )
 
 
@@ -119,7 +119,7 @@ def check_datacore_rest_physicaldisks(item: str, params, section) -> CheckResult
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
     # Status
 
@@ -136,9 +136,9 @@ def check_datacore_rest_physicaldisks(item: str, params, section) -> CheckResult
     # Info #
     ########
 
-    size = data['Size']['Value']
+    size = data["Size"]["Value"]
     # InitializationPercentage = data['InitializationPercentage']
-    sector_size = data['SectorSize']
+    sector_size = data["SectorSize"]
     # data['MaxReadWriteTime']
     # data['PercentAllocated']
 
@@ -162,18 +162,28 @@ def check_datacore_rest_physicaldisks(item: str, params, section) -> CheckResult
         value_store = get_value_store()
 
         current_collection_time_in_epoch = convert_timestamp_to_epoch(
-            data['PerformanceData']['CollectionTime']
+            data["PerformanceData"]["CollectionTime"]
         )
 
         rate = {}
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
 
         message = f"Read IO/s: {rate['TotalReads']}, Write IO/s: {rate['TotalWrites']}"
         yield Result(state=State.OK, summary=message)
 
         # Read / Write Ratio
-        percent_read, percent_write = calculate_percentages(rate['TotalReads'], rate['TotalWrites'])
+        percent_read, percent_write = calculate_percentages(
+            rate["TotalReads"], rate["TotalWrites"]
+        )
         message = f"Read / Write Ratio: {round(percent_read)}/{round(percent_write)}%"
         yield Result(state=State.OK, summary=message)
 
@@ -182,37 +192,45 @@ def check_datacore_rest_physicaldisks(item: str, params, section) -> CheckResult
         #  From the above, the Average Time per Write = ∆ TotalWriteTime / ∆ TotalWrites.
         #  $AverageTimeperWrite = $PhysicalDisk1PerformanceReading.TotalWritesTime / $PhysicalDisk1PerformanceReading.TotalWrites
 
-        if rate['TotalReads'] > 0:
-            average_read_latency = round((rate['TotalReadsTime'] / rate['TotalReads']), 2)
+        if rate["TotalReads"] > 0:
+            average_read_latency = round(
+                (rate["TotalReadsTime"] / rate["TotalReads"]), 2
+            )
         else:
             average_read_latency = 0
-        if rate['TotalWrites'] > 0:
-            average_write_latency = round((rate['TotalWritesTime'] / rate['TotalWrites']), 2)
+        if rate["TotalWrites"] > 0:
+            average_write_latency = round(
+                (rate["TotalWritesTime"] / rate["TotalWrites"]), 2
+            )
         else:
             average_write_latency = 0
 
-        upper_read_latency_levels = params['upper_write_latency_levels']
-        yield from (check_levels(
+        upper_read_latency_levels = params["upper_write_latency_levels"]
+        yield from (
+            check_levels(
                 average_read_latency,
                 levels_upper=upper_read_latency_levels,
-                label='avg. read latency',
+                label="avg. read latency",
                 notice_only=False,
-            ))
+            )
+        )
 
-        upper_write_latency_levels = params['upper_write_latency_levels']
-        yield from (check_levels(
+        upper_write_latency_levels = params["upper_write_latency_levels"]
+        yield from (
+            check_levels(
                 average_write_latency,
                 levels_upper=upper_write_latency_levels,
-                label='avg. write latency',
+                label="avg. write latency",
                 notice_only=False,
-            ))
+            )
+        )
 
         # yield all metrics
         performance_metrics = [
-            ("disk_read_ios", rate['TotalReads']),
-            ("disk_write_ios", rate['TotalWrites']),
-            ("disk_read_throughput", rate['TotalBytesRead']),
-            ("disk_write_throughput", rate['TotalBytesWritten']),
+            ("disk_read_ios", rate["TotalReads"]),
+            ("disk_write_ios", rate["TotalWrites"]),
+            ("disk_read_throughput", rate["TotalBytesRead"]),
+            ("disk_write_throughput", rate["TotalBytesWritten"]),
             ("read_latency", average_read_latency / 1000),
             ("write_latency", average_write_latency / 1000),
         ]
@@ -233,9 +251,9 @@ check_plugin_datacore_rest_physicaldisks = CheckPlugin(
     sections=["datacore_rest_physicaldisks"],
     discovery_function=discover_datacore_rest,
     check_function=check_datacore_rest_physicaldisks,
-    check_ruleset_name='datacore_rest_physicaldisks',
+    check_ruleset_name="datacore_rest_physicaldisks",
     check_default_parameters={
-        'upper_read_latency_levels': ('no_levels', None),
-        'upper_write_latency_levels': ('no_levels', None),
-    }
+        "upper_read_latency_levels": ("no_levels", None),
+        "upper_write_latency_levels": ("no_levels", None),
+    },
 )

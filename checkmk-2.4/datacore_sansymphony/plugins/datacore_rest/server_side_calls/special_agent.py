@@ -7,7 +7,6 @@ from collections.abc import Iterator
 
 from cmk.server_side_calls.v1 import (
     HostConfig,
-    noop_parser,
     Secret,
     SpecialAgentCommand,
     SpecialAgentConfig,

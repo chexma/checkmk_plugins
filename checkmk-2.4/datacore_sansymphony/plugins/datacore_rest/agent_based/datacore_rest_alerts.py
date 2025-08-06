@@ -52,8 +52,7 @@ from cmk_addons.plugins.datacore_rest.lib import (
     discover_datacore_rest_single,
     parse_datacore_rest_single,
     convert_timestamp_to_epoch,
-    convert_epoch_to_readable
-
+    convert_epoch_to_readable,
 )
 
 from cmk.agent_based.v2 import (
@@ -63,7 +62,7 @@ from cmk.agent_based.v2 import (
     Result,
     State,
     Metric,
-    check_levels
+    check_levels,
 )
 
 
@@ -80,18 +79,20 @@ def check_datacore_rest_alerts(params, section) -> CheckResult:
     alert_list = []
 
     for alert in section:
-        text_string = alert['MessageText']
-        
+        text_string = alert["MessageText"]
+
         # Replace the {0} {1}... placeholders in the alert text string with the data from the MessageData dictionary
-        if alert['MessageData'] is not None:
-            nr_of_placeholders = len(alert['MessageData'])
-            text_string = alert['MessageText']
+        if alert["MessageData"] is not None:
+            nr_of_placeholders = len(alert["MessageData"])
+            text_string = alert["MessageText"]
             for message in range(nr_of_placeholders):
                 placeholder = "{" + str(message) + "}"
                 if placeholder in text_string:
-                    text_string = text_string.replace(placeholder, alert['MessageData'][message])
+                    text_string = text_string.replace(
+                        placeholder, alert["MessageData"][message]
+                    )
 
-        if params['remove_support_bundle_messages'] == 'remove':
+        if params["remove_support_bundle_messages"] == "remove":
             if "Support bundle" in text_string:
                 break
 
@@ -99,7 +100,7 @@ def check_datacore_rest_alerts(params, section) -> CheckResult:
 
     if len(alert_list) == 0:
         yield Metric("alerts", 0)
-        yield Result(state=State.OK, summary='No alerts present')
+        yield Result(state=State.OK, summary="No alerts present")
         return
 
     nr_of_alerts = int(len(alert_list))
@@ -110,21 +111,25 @@ def check_datacore_rest_alerts(params, section) -> CheckResult:
     for date, message in top_ten_entries:
         details += f"{convert_epoch_to_readable(date)} {message} \n"
 
-    latest_entry = f"{convert_epoch_to_readable(top_ten_entries[0][0])}: "\
+    latest_entry = (
+        f"{convert_epoch_to_readable(top_ten_entries[0][0])}: "
         f"{top_ten_entries[0][1][:80]}"
+    )
 
-    upper_levels = params['number_of_alerts']
+    upper_levels = params["number_of_alerts"]
 
-    yield from (check_levels(
-        nr_of_alerts,
-        levels_upper=upper_levels,
-        label='Alerts',
-        notice_only = True,
-        metric_name='alerts'
-    ))
+    yield from (
+        check_levels(
+            nr_of_alerts,
+            levels_upper=upper_levels,
+            label="Alerts",
+            notice_only=True,
+            metric_name="alerts",
+        )
+    )
 
     message = f"latest alert: {latest_entry}"
-    yield Result(state=State.OK, summary = message, details = details)
+    yield Result(state=State.OK, summary=message, details=details)
 
 
 check_plugin_datacore_rest_alerts = CheckPlugin(
@@ -134,8 +139,8 @@ check_plugin_datacore_rest_alerts = CheckPlugin(
     discovery_function=discover_datacore_rest_single,
     check_function=check_datacore_rest_alerts,
     check_default_parameters={
-        'number_of_alerts': ('fixed', (1, 1)),
-        'remove_support_bundle_messages': 'remove'
+        "number_of_alerts": ("fixed", (1, 1)),
+        "remove_support_bundle_messages": "remove",
     },
-    check_ruleset_name='datacore_rest_alerts',
+    check_ruleset_name="datacore_rest_alerts",
 )

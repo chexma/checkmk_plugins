@@ -38,7 +38,7 @@ from cmk_addons.plugins.datacore_rest.lib import (
     parse_datacore_rest_single,
     discover_datacore_rest_single,
     convert_epoch_to_readable,
-    convert_timestamp_to_epoch
+    convert_timestamp_to_epoch,
 )
 
 from cmk.agent_based.v2 import (
@@ -60,7 +60,7 @@ agent_section_datacore_rest_snapshots = AgentSection(
 def check_datacore_rest_snapshots(section) -> CheckResult:
     """Check state of DataCore Snapshots"""
 
-    nr_of_snapshots = (len(section))
+    nr_of_snapshots = len(section)
 
     if nr_of_snapshots == 0:
         message = "No Snapshots present"
@@ -71,7 +71,7 @@ def check_datacore_rest_snapshots(section) -> CheckResult:
     snapshot_list = []
 
     for snapshot in section:
-        name = snapshot['Caption']
+        name = snapshot["Caption"]
         timestamp = snapshot["TimeStamp"]
         snapshot_list.append((convert_timestamp_to_epoch(timestamp), name))
 
@@ -83,8 +83,10 @@ def check_datacore_rest_snapshots(section) -> CheckResult:
     for date, message in top_ten_entries:
         details += f"{convert_epoch_to_readable(date)} {message} \n"
 
-    latest_entry = f"{convert_epoch_to_readable(top_ten_entries[0][0])}: "\
+    latest_entry = (
+        f"{convert_epoch_to_readable(top_ten_entries[0][0])}: "
         f"{top_ten_entries[0][1][:80]}"
+    )
 
     message = f"Snapshots: {nr_of_snapshots}, Latest: {latest_entry}"
 

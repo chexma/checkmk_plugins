@@ -14,7 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-""""
+""" "
 Output:
 
 {
@@ -54,7 +54,6 @@ Output:
             "StatusLevel": 0
         }
     ],
-    
     "Description": "BRZ - akf  ESX Host 4",
     "ExtendedCaption": "esx4",
     "HostGroupId": null,
@@ -136,10 +135,10 @@ def check_datacore_rest_hosts(item: str, section) -> CheckResult:
     if data is None:
         return
 
-    perfdata = bool('PerformanceData' in data)
+    perfdata = bool("PerformanceData" in data)
 
-    hosts_status = data['Status']
-    host_ports = data['ClientPorts']
+    hosts_status = data["Status"]
+    host_ports = data["ClientPorts"]
 
     ##########
     # Status #
@@ -150,8 +149,11 @@ def check_datacore_rest_hosts(item: str, section) -> CheckResult:
         disconnected_ports = []
         # check if host is partially connected
         for port in host_ports:
-            if port['Status'] not in ['Present', 'Connected'] or port["Connected"] is False:
-                disconnected_ports.append(port['Caption'])
+            if (
+                port["Status"] not in ["Present", "Connected"]
+                or port["Connected"] is False
+            ):
+                disconnected_ports.append(port["Caption"])
         if len(disconnected_ports) > 0:
             message = f"Host is only partially connected, disconnected ports: {','.join(disconnected_ports)}"
             yield Result(state=State.WARN, summary=message)
@@ -161,7 +163,6 @@ def check_datacore_rest_hosts(item: str, section) -> CheckResult:
         host_is_connected = False
         message = "Host is disconnected"
         yield Result(state=State.CRIT, summary=message)
-
 
     ########
     # Info #
@@ -185,33 +186,45 @@ def check_datacore_rest_hosts(item: str, section) -> CheckResult:
             "TotalWrites",
             "TotalBytesRead",
             "TotalBytesWritten",
-            "Latency"
+            "Latency",
         ]
 
         # get a reference to the value_store:
         value_store = get_value_store()
 
         current_collection_time_in_epoch = convert_timestamp_to_epoch(
-            data['PerformanceData']['CollectionTime']
+            data["PerformanceData"]["CollectionTime"]
         )
 
         rate = {}
         for counter in raw_performance_counters:
-            rate[counter] = round(get_rate(value_store, counter, current_collection_time_in_epoch, data['PerformanceData'][counter], raise_overflow=True))
+            rate[counter] = round(
+                get_rate(
+                    value_store,
+                    counter,
+                    current_collection_time_in_epoch,
+                    data["PerformanceData"][counter],
+                    raise_overflow=True,
+                )
+            )
 
         performance_metrics = [
-            ("disk_read_ios", rate['TotalReads']),
-            ("disk_write_ios", rate['TotalWrites']),
-            ("disk_read_throughput", rate['TotalBytesRead']),
-            ("disk_write_throughput", rate['TotalBytesWritten']),
-            ("latency", rate['Latency']),
+            ("disk_read_ios", rate["TotalReads"]),
+            ("disk_write_ios", rate["TotalWrites"]),
+            ("disk_read_throughput", rate["TotalBytesRead"]),
+            ("disk_write_throughput", rate["TotalBytesWritten"]),
+            ("latency", rate["Latency"]),
         ]
         for description, metric in performance_metrics:
             yield Metric(description, metric)
-        message = f"Read IO/s: {rate['TotalReads']}/s, Write IO/s: {rate['TotalWrites']}/s"
+        message = (
+            f"Read IO/s: {rate['TotalReads']}/s, Write IO/s: {rate['TotalWrites']}/s"
+        )
         yield Result(state=State.OK, summary=message)
 
-        percent_read, percent_write = calculate_percentages(rate['TotalReads'], rate['TotalWrites'])
+        percent_read, percent_write = calculate_percentages(
+            rate["TotalReads"], rate["TotalWrites"]
+        )
         message = f"Read / Write Ratio: {round(percent_read)}/{round(percent_write)}%"
         yield Result(state=State.OK, summary=message)
 

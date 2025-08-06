@@ -108,8 +108,7 @@ Output:
 from cmk_addons.plugins.datacore_rest.lib import (
     discover_datacore_rest,
     parse_datacore_rest,
-    convert_timestamp
-
+    convert_timestamp,
 )
 
 from cmk.agent_based.v2 import (
@@ -118,7 +117,7 @@ from cmk.agent_based.v2 import (
     CheckResult,
     Result,
     State,
-    render
+    render,
 )
 
 
@@ -131,33 +130,34 @@ def check_datacore_rest_servergroups(item, section) -> CheckResult:
 
     # Infos
 
-    group_capacity = data['LicenseSettings']['StorageCapacity']['Value']
-    group_capacity_used = data['StorageUsed']['Value']
-    next_expiration_date = convert_timestamp(data['NextExpirationDate'])
+    group_capacity = data["LicenseSettings"]["StorageCapacity"]["Value"]
+    group_capacity_used = data["StorageUsed"]["Value"]
+    next_expiration_date = convert_timestamp(data["NextExpirationDate"])
     message = f"Group capacity: {render.bytes(group_capacity)}, Group capacity Used: {render.bytes(group_capacity_used)}, next expiration data: {next_expiration_date}"
 
-    if data['SmtpSettings'] is not None:
+    if data["SmtpSettings"] is not None:
         smtp_settings = f"SMTP Server: {data['SmtpSettings']['SmtpServer']}, E-Mail Address: {data['SmtpSettings']['EmailAddress']}"
     else:
         smtp_settings = "Not configured"
 
-    if 'SyslogSettings' in data and data['SyslogSettings'] is not None:
+    if data["SyslogSettings"] is not None:
         syslog_settings = f"Syslog Server: {data['SyslogSettings']['SyslogServer']}, Log Level: {data['SyslogSettings']['SyslogLogLevel']}"
     else:
         syslog_settings = "Not configured"
 
-    details = f"CrashRecoveryCount: {data['CrashRecoveryCount']} \n" \
-              f"SMTP Settings: {smtp_settings}\n" \
-              f"Syslog Settings: {syslog_settings}\n" \
-              f"Max Servers: {data['LicenseSettings']['MaxServers']}\n" \
-              f"StorageCapacity: {render.bytes(data['LicenseSettings']['StorageCapacity']['Value'])}\n" \
-              f"Group Capacity:  {render.bytes(group_capacity)}\n" \
-              f"Group capacity Used: {render.bytes(group_capacity_used)}\n" \
-              f"LicenseRemaining: {data['LicenseRemaining']}\n" \
-              f"Max Storage: {render.bytes(data['MaxStorage']['Value'])}\n" \
-              f"Telemetry: {data['Telemetry']}\n" \
-              f"SupportBundleRelayAddress: {data['SupportBundleRelayAddress']}\n" \
-
+    details = (
+        f"CrashRecoveryCount: {data['CrashRecoveryCount']} \n"
+        f"SMTP Settings: {smtp_settings}\n"
+        f"Syslog Settings: {syslog_settings}\n"
+        f"Max Servers: {data['LicenseSettings']['MaxServers']}\n"
+        f"StorageCapacity: {render.bytes(data['LicenseSettings']['StorageCapacity']['Value'])}\n"
+        f"Group Capacity:  {render.bytes(group_capacity)}\n"
+        f"Group capacity Used: {render.bytes(group_capacity_used)}\n"
+        f"LicenseRemaining: {data['LicenseRemaining']}\n"
+        f"Max Storage: {render.bytes(data['MaxStorage']['Value'])}\n"
+        f"Telemetry: {data['Telemetry']}\n"
+        f"SupportBundleRelayAddress: {data['SupportBundleRelayAddress']}\n"
+    )
     yield Result(state=State.OK, summary=message, details=details)
 
 

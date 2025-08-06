@@ -4,18 +4,15 @@
 # (c) Andreas Doehler 'andreas.doehler@bechtle.com'
 # License: GNU General Public License v2
 
-from cmk.rulesets.v1 import Help, Title
+from cmk.rulesets.v1 import Title
 from cmk.rulesets.v1.form_specs import (
     DictElement,
     Dictionary,
-    SingleChoice,
-    SingleChoiceElement,
     Integer,
     SimpleLevels,
     LevelDirection,
     InputHint,
     migrate_to_integer_simple_levels,
-    DefaultValue
 )
 
 from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, Topic

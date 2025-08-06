@@ -29,7 +29,8 @@ def discover_datacore_rest(section) -> DiscoveryResult:
 
 def discover_datacore_rest_single(section) -> DiscoveryResult:
     "Discovers service without items"
-    yield Service()
+    if section:
+        yield Service()
 
 
 def parse_datacore_rest(string_table: StringTable):
@@ -82,7 +83,7 @@ def calculate_percentages(value1: int, value2: int):
     total = value1 + value2
     if total <= 0:
         return (0, 0)
-    else:
-        percent_value1 = (value1 / total) * 100
-        percent_value2 = (value2 / total) * 100
-        return percent_value1, percent_value2
+
+    percent_value1 = (value1 / total) * 100
+    percent_value2 = (value2 / total) * 100
+    return percent_value1, percent_value2
