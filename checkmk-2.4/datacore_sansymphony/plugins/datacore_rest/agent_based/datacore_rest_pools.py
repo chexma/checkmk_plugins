@@ -223,6 +223,7 @@ from cmk.agent_based.v2 import (
 from cmk.agent_based.v1 import check_levels
 
 from cmk.plugins.lib.df import (
+    check_filesystem_levels,
     FILESYSTEM_DEFAULT_LEVELS,
     MAGIC_FACTOR_DEFAULT_PARAMS,
 )
@@ -283,26 +284,6 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
     ####################
 
     if perfdata:
-
-        # Pool Usage
-        pool_size = data["Size"]["Value"]
-        pool_free = data["FreeSpace"]["Value"]
-        pool_allocated = pool_size - pool_free
-
-        warn, crit = params["levels"]
-
-        yield from check_levels(
-            100.0 * pool_allocated / pool_size,
-            levels_upper=(warn, crit),
-            metric_name="fs_used_percent",
-            render_func=render.percent,
-            boundaries=(0.0, 100.0),
-            label="Used",
-        )
-
-        yield Metric("fs_size", pool_size, boundaries=(0, None))
-        yield Metric("fs_free", pool_free, boundaries=(0, None))
-        yield Metric("fs_used", pool_allocated, boundaries=(0, None))
 
         raw_performance_counters = [
             "TotalReads",
@@ -391,8 +372,86 @@ check_plugin_datacore_rest_pools = CheckPlugin(
     discovery_function=discover_datacore_rest,
     check_function=check_datacore_rest_pools,
     check_default_parameters={
+    },
+    #check_ruleset_name="sansymphony_pool",
+)
+
+#################
+# Pool Capacity #
+#################
+
+def check_datacore_rest_pool_capacity(item: str, params, section) -> CheckResult:
+    data = section.get(item)
+
+    if data is None:
+        return
+
+    perfdata = bool("PerformanceData" in data)
+
+    if perfdata:
+        # Pool Usage - treat as filesystem
+        pool_size = data["Size"]["Value"]
+        pool_free = data["FreeSpace"]["Value"]
+        pool_allocated = pool_size - pool_free
+
+        # Convert bytes to MB for CheckMK filesystem check
+        size_mb = pool_size / 1024.0**2
+        free_mb = pool_free / 1024.0**2
+        used_mb = pool_allocated / 1024.0**2
+
+        # Normalize parameters: SimpleLevels returns ('fixed', (warn, crit)) or similar
+        # but check_filesystem_levels expects just (warn, crit) or more complex dict
+        normalized_params = dict(params)
+
+        # Handle SimpleLevels format for 'levels' parameter
+        if "levels" in normalized_params:
+            levels = normalized_params["levels"]
+            if isinstance(levels, tuple) and len(levels) == 2:
+                # Check if it's SimpleLevels format: ('fixed', (warn, crit))
+                if isinstance(levels[0], str) and levels[0] in ('fixed', 'predictive', 'no_levels'):
+                    if levels[0] == 'fixed' and isinstance(levels[1], tuple):
+                        normalized_params["levels"] = levels[1]
+                    elif levels[0] == 'no_levels':
+                        normalized_params.pop("levels", None)
+
+        # Handle SimpleLevels format for 'levels_low' parameter (magic factor)
+        if "levels_low" in normalized_params:
+            levels_low = normalized_params["levels_low"]
+            if isinstance(levels_low, tuple) and len(levels_low) == 2:
+                if isinstance(levels_low[0], str) and levels_low[0] == 'fixed':
+                    normalized_params["levels_low"] = levels_low[1]
+                elif levels_low[0] == 'no_levels':
+                    normalized_params.pop("levels_low", None)
+
+        # Handle trend_perfdata SimpleLevels format
+        if "trend_perfdata" in normalized_params:
+            trend_perfdata = normalized_params["trend_perfdata"]
+            if isinstance(trend_perfdata, tuple) and len(trend_perfdata) == 2:
+                if isinstance(trend_perfdata[0], str) and trend_perfdata[0] == 'fixed':
+                    normalized_params["trend_perfdata"] = trend_perfdata[1]
+                elif trend_perfdata[0] == 'no_levels':
+                    normalized_params.pop("trend_perfdata", None)
+
+        # Use CheckMK's filesystem checking with magic factor support
+        yield from check_filesystem_levels(
+            filesystem_size=size_mb,
+            allocatable_filesystem_size=size_mb,
+            free_space=free_mb,
+            used_space=used_mb,
+            params=normalized_params,
+        )
+
+###
+
+check_plugin_datacore_rest_pool_capacity = CheckPlugin(
+    name="datacore_rest_pool_capacity",
+    service_name="SANsymphony Pool capacity %s",
+    sections=["datacore_rest_pools"],
+    discovery_function=discover_datacore_rest,
+    check_function=check_datacore_rest_pool_capacity,
+    check_ruleset_name="datacore_rest_pool_capacity",
+    check_default_parameters={
         **FILESYSTEM_DEFAULT_LEVELS,
         **MAGIC_FACTOR_DEFAULT_PARAMS,
     },
-    check_ruleset_name="sansymphony_pool",
 )
