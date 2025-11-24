@@ -24,10 +24,70 @@ from cmk.rulesets.v1.form_specs import (
     LevelDirection,
     Percentage,
     SimpleLevels,
+    SingleChoice,
+    SingleChoiceElement,
     TimeMagnitude,
     TimeSpan,
 )
 from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, Topic
+
+
+#############################
+# Pool Status Check Ruleset #
+#############################
+
+def _formspec_datacore_rest_pools() -> Dictionary:
+    """
+    Form specification for DataCore pool status monitoring.
+    """
+    return Dictionary(
+        title=Title("Pool status parameters"),
+        help_text=Help(
+            "Configure the monitoring behavior for DataCore SANsymphony storage pools."
+        ),
+        elements={
+            "oversubscription_state": DictElement(
+                parameter_form=SingleChoice(
+                    title=Title("State when pool is oversubscribed"),
+                    help_text=Help(
+                        "Define the monitoring state when a pool is oversubscribed. "
+                        "Oversubscription occurs when the total size of all virtual disks "
+                        "exceeds the physical capacity of the pool. "
+                        "By default, oversubscription results in a CRITICAL state."
+                    ),
+                    elements=[
+                        SingleChoiceElement(
+                            name="crit",
+                            title=Title("Oversubscription is critical (default)"),
+                        ),
+                        SingleChoiceElement(
+                            name="warn",
+                            title=Title("Oversubscription triggers a warning"),
+                        ),
+                        SingleChoiceElement(
+                            name="ignore",
+                            title=Title("Ignore oversubscription"),
+                        ),
+                    ],
+                    prefill=DefaultValue("crit"),
+                ),
+                required=False,
+            ),
+        },
+    )
+
+
+rule_spec_datacore_rest_pools = CheckParameters(
+    name="datacore_rest_pools",
+    topic=Topic.STORAGE,
+    condition=HostAndItemCondition(item_title=Title("Pool")),
+    parameter_form=_formspec_datacore_rest_pools,
+    title=Title("DataCore SANsymphony Pool Status"),
+    help_text=Help(
+        "This ruleset allows you to configure the monitoring behavior for DataCore SANsymphony "
+        "storage pools, including how to handle pool oversubscription."
+    ),
+)
 
 
 def _formspec_datacore_rest_pool_capacity() -> Dictionary:

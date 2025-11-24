@@ -251,12 +251,19 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         message = f"Pool status: {data['Status']}"
         yield Result(state=State.OK, summary=message)
 
+    # Check for oversubscription
     if int(data["PerformanceData"]["BytesOverSubscribed"]) > 0:
-        message = (
-            f"Pool is oversubscribed with "
-            f"{render.bytes(data["PerformanceData"]["BytesOverSubscribed"])}"
-        )
-        yield Result(state=State.CRIT, summary=message)
+        oversubscribed_bytes = data["PerformanceData"]["BytesOverSubscribed"]
+        message = f"Pool is oversubscribed with {render.bytes(oversubscribed_bytes)}"
+
+        # Get oversubscription state from parameters (default: CRIT)
+        oversubscription_state = params.get("oversubscription_state", "crit")
+        if oversubscription_state == "ignore":
+            yield Result(state=State.OK, summary=message)
+        elif oversubscription_state == "warn":
+            yield Result(state=State.WARN, summary=message)
+        else:  # "crit" (default)
+            yield Result(state=State.CRIT, summary=message)
 
     ########
     # Info #
@@ -371,9 +378,10 @@ check_plugin_datacore_rest_pools = CheckPlugin(
     sections=["datacore_rest_pools"],
     discovery_function=discover_datacore_rest,
     check_function=check_datacore_rest_pools,
+    check_ruleset_name="datacore_rest_pools",
     check_default_parameters={
+        "oversubscription_state": "crit",  # Default: CRIT for oversubscription
     },
-    #check_ruleset_name="sansymphony_pool",
 )
 
 #################
