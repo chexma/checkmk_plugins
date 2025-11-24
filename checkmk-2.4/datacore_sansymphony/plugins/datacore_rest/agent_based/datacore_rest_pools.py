@@ -251,7 +251,10 @@ def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
         message = f"Pool status: {data['Status']}"
         yield Result(state=State.OK, summary=message)
 
-    # Check for oversubscription
+    ####################
+    # Oversubscription #
+    ####################
+
     if int(data["PerformanceData"]["BytesOverSubscribed"]) > 0:
         oversubscribed_bytes = data["PerformanceData"]["BytesOverSubscribed"]
         message = f"Pool is oversubscribed with {render.bytes(oversubscribed_bytes)}"
