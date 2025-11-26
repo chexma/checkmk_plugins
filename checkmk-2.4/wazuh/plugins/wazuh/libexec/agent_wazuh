@@ -288,15 +288,15 @@ def output_agents_summary_section(summary: dict, overview: Optional[dict] = None
     """Section: Agent statistics"""
     print("<<<wazuh_agents:sep(0)>>>")
 
-    items = summary.get("data", {}).get("affected_items", [{}])
-    data = items[0] if items else {}
+    # API returns data.connection.* for agent status summary
+    connection = summary.get("data", {}).get("connection", {})
 
     result = {
-        "active": data.get("active", 0),
-        "disconnected": data.get("disconnected", 0),
-        "never_connected": data.get("never_connected", 0),
-        "pending": data.get("pending", 0),
-        "total": data.get("total", 0),
+        "active": connection.get("active", 0),
+        "disconnected": connection.get("disconnected", 0),
+        "never_connected": connection.get("never_connected", 0),
+        "pending": connection.get("pending", 0),
+        "total": connection.get("total", 0),
     }
 
     # Add overview data if available
