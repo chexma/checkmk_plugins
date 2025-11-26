@@ -91,6 +91,29 @@ def _formspec():
                     prefill=DefaultValue(False),
                 ),
             ),
+            "piggyback_sca": DictElement(
+                required=False,
+                parameter_form=BooleanChoice(
+                    title=Title("Collect SCA data for piggyback agents"),
+                    help_text=Help(
+                        "Fetch Security Configuration Assessment (SCA) results "
+                        "for each agent and include in piggyback data. "
+                        "Creates per-policy services on piggyback hosts."
+                    ),
+                    prefill=DefaultValue(False),
+                ),
+            ),
+            "piggyback_syscheck": DictElement(
+                required=False,
+                parameter_form=BooleanChoice(
+                    title=Title("Collect Syscheck data for piggyback agents"),
+                    help_text=Help(
+                        "Fetch File Integrity Monitoring (Syscheck) scan status "
+                        "for each agent and include in piggyback data."
+                    ),
+                    prefill=DefaultValue(False),
+                ),
+            ),
         },
     )
 

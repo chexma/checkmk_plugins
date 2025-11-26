@@ -45,6 +45,12 @@ def _agent_arguments(params, host_config):
     if params.get("piggyback_all_agents"):
         args.append("--piggyback-all-agents")
 
+    if params.get("piggyback_sca"):
+        args.append("--piggyback-sca")
+
+    if params.get("piggyback_syscheck"):
+        args.append("--piggyback-syscheck")
+
     yield SpecialAgentCommand(command_arguments=args)
 
 

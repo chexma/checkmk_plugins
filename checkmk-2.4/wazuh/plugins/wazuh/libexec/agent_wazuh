@@ -11,7 +11,7 @@ import re
 import sys
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 try:
     import requests
@@ -81,7 +81,6 @@ class WazuhAPIClient:
             response.raise_for_status()
             data = response.json()
         else:
-            # urllib fallback
             ctx = ssl.create_default_context()
             if not self.verify_ssl:
                 ctx.check_hostname = False
@@ -118,7 +117,6 @@ class WazuhAPIClient:
                 url, params=params, timeout=self.timeout, verify=self.verify_ssl
             )
             if response.status_code == 401:
-                # Token expired, re-authenticate
                 self.authenticate()
                 response = self.session.get(
                     url, params=params, timeout=self.timeout, verify=self.verify_ssl
@@ -126,7 +124,6 @@ class WazuhAPIClient:
             response.raise_for_status()
             return response.json()
         else:
-            # urllib fallback
             ctx = ssl.create_default_context()
             if not self.verify_ssl:
                 ctx.check_hostname = False
@@ -143,42 +140,77 @@ class WazuhAPIClient:
             with urllib.request.urlopen(req, context=ctx, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode())
 
-    # API Methods
+    # ========== Core API Methods ==========
     def get_api_info(self) -> dict:
-        """GET / - API information"""
         return self._request("/")
 
     def get_manager_status(self) -> dict:
-        """GET /manager/status - Manager process status"""
         return self._request("/manager/status")
 
     def get_manager_info(self) -> dict:
-        """GET /manager/info - Manager information"""
         return self._request("/manager/info")
 
     def get_cluster_status(self) -> dict:
-        """GET /cluster/status - Cluster status"""
         return self._request("/cluster/status")
 
     def get_cluster_nodes(self) -> dict:
-        """GET /cluster/nodes - Cluster nodes"""
         return self._request("/cluster/nodes")
 
     def get_cluster_health(self) -> dict:
-        """GET /cluster/healthcheck - Cluster health check"""
         return self._request("/cluster/healthcheck")
 
     def get_agents_summary(self) -> dict:
-        """GET /agents/summary/status - Agent status summary"""
         return self._request("/agents/summary/status")
 
     def get_agents(self, status: Optional[str] = None, limit: int = 500) -> dict:
-        """GET /agents - List of agents"""
         params = {"limit": limit}
         if status:
             params["status"] = status
         return self._request("/agents", params=params)
 
+    # ========== New API Methods ==========
+    def get_daemon_stats(self) -> dict:
+        """GET /manager/daemons/stats - Daemon statistics"""
+        return self._request("/manager/daemons/stats")
+
+    def get_logs_summary(self) -> dict:
+        """GET /manager/logs/summary - Logs summary"""
+        return self._request("/manager/logs/summary")
+
+    def get_rules_summary(self) -> dict:
+        """GET /rules - Rules (just get count)"""
+        return self._request("/rules", params={"limit": 1})
+
+    def get_decoders_summary(self) -> dict:
+        """GET /decoders - Decoders (just get count)"""
+        return self._request("/decoders", params={"limit": 1})
+
+    def get_agents_outdated(self) -> dict:
+        """GET /agents/outdated - Outdated agents"""
+        return self._request("/agents/outdated")
+
+    def get_overview_agents(self) -> dict:
+        """GET /overview/agents - Agents overview"""
+        return self._request("/overview/agents")
+
+    def get_tasks(self) -> dict:
+        """GET /tasks/status - Task status"""
+        return self._request("/tasks/status")
+
+    def get_agent_sca(self, agent_id: str) -> dict:
+        """GET /sca/{agent_id} - SCA results for agent"""
+        return self._request(f"/sca/{agent_id}")
+
+    def get_agent_syscheck_last_scan(self, agent_id: str) -> dict:
+        """GET /syscheck/{agent_id}/last_scan - Last syscheck scan"""
+        return self._request(f"/syscheck/{agent_id}/last_scan")
+
+    def get_agent_rootcheck_last_scan(self, agent_id: str) -> dict:
+        """GET /rootcheck/{agent_id}/last_scan - Last rootcheck scan"""
+        return self._request(f"/rootcheck/{agent_id}/last_scan")
+
+
+# ========== Output Sections ==========
 
 def output_api_section(api_info: dict, manager_info: dict) -> None:
     """Section: API availability and version"""
@@ -252,14 +284,13 @@ def output_cluster_section(
     print(json.dumps(data))
 
 
-def output_agents_summary_section(summary: dict) -> None:
+def output_agents_summary_section(summary: dict, overview: Optional[dict] = None) -> None:
     """Section: Agent statistics"""
     print("<<<wazuh_agents:sep(0)>>>")
 
     items = summary.get("data", {}).get("affected_items", [{}])
     data = items[0] if items else {}
 
-    # Normalize the data
     result = {
         "active": data.get("active", 0),
         "disconnected": data.get("disconnected", 0),
@@ -267,7 +298,126 @@ def output_agents_summary_section(summary: dict) -> None:
         "pending": data.get("pending", 0),
         "total": data.get("total", 0),
     }
+
+    # Add overview data if available
+    if overview:
+        overview_data = overview.get("data", {})
+        agent_status = overview_data.get("agent_status", {})
+        config_status = agent_status.get("configuration", {})
+        result["synced"] = config_status.get("synced", 0)
+        result["not_synced"] = config_status.get("not_synced", 0)
+
+        # Agent versions
+        versions = overview_data.get("agent_version", [])
+        result["versions"] = versions
+
+        # OS distribution
+        os_dist = overview_data.get("agent_os", [])
+        result["os_distribution"] = os_dist
+
     print(json.dumps(result))
+
+
+def output_daemon_stats_section(daemon_stats: dict) -> None:
+    """Section: Daemon statistics"""
+    print("<<<wazuh_daemon_stats:sep(0)>>>")
+
+    items = daemon_stats.get("data", {}).get("affected_items", [])
+    daemons = {}
+
+    for item in items:
+        name = item.get("name", "unknown")
+        daemons[name] = {
+            "uptime": item.get("uptime", ""),
+            "timestamp": item.get("timestamp", ""),
+            "metrics": item.get("metrics", {}),
+        }
+
+    print(json.dumps(daemons))
+
+
+def output_logs_section(logs_summary: dict) -> None:
+    """Section: Logs summary"""
+    print("<<<wazuh_logs:sep(0)>>>")
+
+    items = logs_summary.get("data", {}).get("affected_items", [])
+
+    totals = {
+        "all": 0,
+        "error": 0,
+        "warning": 0,
+        "critical": 0,
+        "info": 0,
+    }
+    components = {}
+
+    for item in items:
+        for component, stats in item.items():
+            components[component] = stats
+            totals["all"] += stats.get("all", 0)
+            totals["error"] += stats.get("error", 0)
+            totals["warning"] += stats.get("warning", 0)
+            totals["critical"] += stats.get("critical", 0)
+            totals["info"] += stats.get("info", 0)
+
+    print(json.dumps({
+        "totals": totals,
+        "components": components,
+    }))
+
+
+def output_ruleset_section(rules: dict, decoders: dict) -> None:
+    """Section: Ruleset status"""
+    print("<<<wazuh_ruleset:sep(0)>>>")
+
+    rules_total = rules.get("data", {}).get("total_affected_items", 0)
+    decoders_total = decoders.get("data", {}).get("total_affected_items", 0)
+
+    print(json.dumps({
+        "rules_total": rules_total,
+        "decoders_total": decoders_total,
+    }))
+
+
+def output_outdated_section(outdated: dict) -> None:
+    """Section: Outdated agents"""
+    print("<<<wazuh_agents_outdated:sep(0)>>>")
+
+    items = outdated.get("data", {}).get("affected_items", [])
+    total = outdated.get("data", {}).get("total_affected_items", 0)
+
+    agents = []
+    for agent in items[:20]:  # Limit to 20 for output size
+        agents.append({
+            "id": agent.get("id", ""),
+            "name": agent.get("name", ""),
+            "version": agent.get("version", ""),
+        })
+
+    print(json.dumps({
+        "total": total,
+        "agents": agents,
+    }))
+
+
+def output_tasks_section(tasks: dict) -> None:
+    """Section: Tasks status"""
+    print("<<<wazuh_tasks:sep(0)>>>")
+
+    items = tasks.get("data", {}).get("affected_items", [])
+    total = tasks.get("data", {}).get("total_affected_items", 0)
+
+    # Count by status
+    by_status = {}
+    for task in items:
+        status = task.get("status", "unknown")
+        by_status[status] = by_status.get(status, 0) + 1
+
+    print(json.dumps({
+        "total": total,
+        "by_status": by_status,
+        "tasks": items[:10],  # Limit details to first 10
+    }))
 
 
 def sanitize_hostname(name: str) -> str:
@@ -278,7 +428,13 @@ def sanitize_hostname(name: str) -> str:
     return name.strip('-')[:63]
 
 
-def output_agents_piggyback(agents: dict, include_active: bool = False) -> None:
+def output_agents_piggyback(
+    client: WazuhAPIClient,
+    agents: dict,
+    include_active: bool = False,
+    include_sca: bool = False,
+    include_syscheck: bool = False
+) -> None:
     """Piggyback data for individual agents"""
     items = agents.get("data", {}).get("affected_items", [])
 
@@ -296,6 +452,8 @@ def output_agents_piggyback(agents: dict, include_active: bool = False) -> None:
         agent_name = sanitize_hostname(agent.get("name", f"wazuh-agent-{agent_id}"))
 
         print(f"<<<<{agent_name}>>>>")
+
+        # Basic agent info
         print("<<<wazuh_agent:sep(0)>>>")
         print(json.dumps({
             "id": agent_id,
@@ -314,6 +472,38 @@ def output_agents_piggyback(agents: dict, include_active: bool = False) -> None:
             "config_sum": agent.get("configSum", ""),
             "merged_sum": agent.get("mergedSum", ""),
         }))
+
+        # SCA data if requested and agent is active
+        if include_sca and status == "active":
+            try:
+                sca = client.get_agent_sca(agent_id)
+                sca_items = sca.get("data", {}).get("affected_items", [])
+                if sca_items:
+                    print("<<<wazuh_sca:sep(0)>>>")
+                    print(json.dumps({"policies": sca_items}))
+            except Exception as e:
+                logger.debug(f"Could not fetch SCA for agent {agent_id}: {e}")
+
+        # Syscheck data if requested and agent is active
+        if include_syscheck and status == "active":
+            try:
+                syscheck = client.get_agent_syscheck_last_scan(agent_id)
+                syscheck_items = syscheck.get("data", {}).get("affected_items", [{}])
+                if syscheck_items:
+                    print("<<<wazuh_syscheck:sep(0)>>>")
+                    print(json.dumps(syscheck_items[0] if syscheck_items else {}))
+            except Exception as e:
+                logger.debug(f"Could not fetch syscheck for agent {agent_id}: {e}")
+
+            try:
+                rootcheck = client.get_agent_rootcheck_last_scan(agent_id)
+                rootcheck_items = rootcheck.get("data", {}).get("affected_items", [{}])
+                if rootcheck_items:
+                    print("<<<wazuh_rootcheck:sep(0)>>>")
+                    print(json.dumps(rootcheck_items[0] if rootcheck_items else {}))
+            except Exception as e:
+                logger.debug(f"Could not fetch rootcheck for agent {agent_id}: {e}")
+
         print("<<<<>>>>")
 
 
@@ -323,51 +513,48 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--hostname",
-        required=True,
+        "--hostname", required=True,
         help="Wazuh API hostname or IP address"
     )
     parser.add_argument(
-        "--port",
-        type=int,
-        default=55000,
+        "--port", type=int, default=55000,
         help="API port (default: 55000)"
     )
     parser.add_argument(
-        "--username",
-        default="wazuh",
+        "--username", default="wazuh",
         help="API username (default: wazuh)"
     )
     parser.add_argument(
-        "--password",
-        required=True,
+        "--password", required=True,
         help="API password"
     )
     parser.add_argument(
-        "--no-cert-check",
-        action="store_true",
+        "--no-cert-check", action="store_true",
         help="Disable SSL certificate verification"
     )
     parser.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
+        "--timeout", type=int, default=30,
         help="Timeout in seconds (default: 30)"
     )
     parser.add_argument(
-        "--debug",
-        action="store_true",
+        "--debug", action="store_true",
         help="Enable debug output to stderr"
     )
     parser.add_argument(
-        "--piggyback-agents",
-        action="store_true",
+        "--piggyback-agents", action="store_true",
         help="Output piggyback data for non-active agents"
     )
     parser.add_argument(
-        "--piggyback-all-agents",
-        action="store_true",
+        "--piggyback-all-agents", action="store_true",
         help="Output piggyback data for all agents including active ones"
+    )
+    parser.add_argument(
+        "--piggyback-sca", action="store_true",
+        help="Include SCA data in piggyback (requires active agents)"
+    )
+    parser.add_argument(
+        "--piggyback-syscheck", action="store_true",
+        help="Include syscheck/rootcheck data in piggyback"
     )
 
     return parser.parse_args()
@@ -388,6 +575,8 @@ def main() -> None:
             verify_ssl=not args.no_cert_check,
             timeout=args.timeout,
         )
+
+        # === Core sections ===
 
         # API Info
         logger.debug("Fetching API info...")
@@ -419,16 +608,70 @@ def main() -> None:
 
         output_cluster_section(cluster_status, cluster_health, nodes)
 
-        # Agents Summary
+        # Agents Summary with Overview
         logger.debug("Fetching agents summary...")
         agents_summary = client.get_agents_summary()
-        output_agents_summary_section(agents_summary)
+        try:
+            overview = client.get_overview_agents()
+        except Exception as e:
+            logger.debug(f"Could not fetch overview: {e}")
+            overview = None
+        output_agents_summary_section(agents_summary, overview)
 
-        # Piggyback for individual agents
+        # === Extended sections ===
+
+        # Daemon Stats
+        logger.debug("Fetching daemon stats...")
+        try:
+            daemon_stats = client.get_daemon_stats()
+            output_daemon_stats_section(daemon_stats)
+        except Exception as e:
+            logger.warning(f"Could not fetch daemon stats: {e}")
+
+        # Logs Summary
+        logger.debug("Fetching logs summary...")
+        try:
+            logs_summary = client.get_logs_summary()
+            output_logs_section(logs_summary)
+        except Exception as e:
+            logger.warning(f"Could not fetch logs summary: {e}")
+
+        # Ruleset
+        logger.debug("Fetching ruleset info...")
+        try:
+            rules = client.get_rules_summary()
+            decoders = client.get_decoders_summary()
+            output_ruleset_section(rules, decoders)
+        except Exception as e:
+            logger.warning(f"Could not fetch ruleset info: {e}")
+
+        # Outdated Agents
+        logger.debug("Fetching outdated agents...")
+        try:
+            outdated = client.get_agents_outdated()
+            output_outdated_section(outdated)
+        except Exception as e:
+            logger.warning(f"Could not fetch outdated agents: {e}")
+
+        # Tasks
+        logger.debug("Fetching tasks...")
+        try:
+            tasks = client.get_tasks()
+            output_tasks_section(tasks)
+        except Exception as e:
+            logger.warning(f"Could not fetch tasks: {e}")
+
+        # === Piggyback ===
         if args.piggyback_agents or args.piggyback_all_agents:
-            logger.debug("Fetching agents list...")
+            logger.debug("Fetching agents list for piggyback...")
             agents = client.get_agents()
-            output_agents_piggyback(agents, include_active=args.piggyback_all_agents)
+            output_agents_piggyback(
+                client,
+                agents,
+                include_active=args.piggyback_all_agents,
+                include_sca=args.piggyback_sca,
+                include_syscheck=args.piggyback_syscheck,
+            )
 
     except WazuhAPIError as e:
         sys.stderr.write(f"Wazuh API Error: {e}\n")
