@@ -3,6 +3,7 @@ param (
     [string]$Server,
     [string]$Instance,
     [string]$Hostname,
+    [Parameter(Mandatory=$true)]
     [ValidateSet("install", "uninstall", "register_tls", "register_agentupdater", "removehard", "download")]
     [string]$Task,
     [ValidateSet("lowercase", "uppercase", "capitalize")]
@@ -12,18 +13,25 @@ param (
     [string]$MsiexecType,
     [bool]$IgnoreSSL = $true,
     [ValidateSet("http", "https")]
-    [string]$Protocol = "http"
+    [string]$Protocol = "http",
+
+    # CheckMK API Credentials (Default für Automatisierung, kann per Parameter überschrieben werden)
+    [string]$Username = "automation",
+    [string]$Secret = "WH@IKYGOWPDQSTQEBHBP"
 )
 
-# 
+#################
+# Configuration #
+#################
 
-$Username = "automation"                                                   
-$Secret = "WH@IKYGOWPDQSTQEBHBP"      
+# CheckMK Server und Site (für Automatisierung anpassen)
+if (-not $Server)   { $Server = "checkmk.example.com" }
+if (-not $Instance) { $Instance = "mysite" }
 
-# 
-$DownloadedMSI = "C:\Windows\Temp\check_mk_agent.msi"                        
+# Pfade
+$DownloadedMSI = "C:\Windows\Temp\check_mk_agent.msi"
 $AgentCtlPath = "C:\Program Files (x86)\checkmk\service\cmk-agent-ctl.exe"
-$AgentUpdaterPath = "C:\Program Files (x86)\checkmk\service\check_mk_agent.exe"                      
+$AgentUpdaterPath = "C:\Program Files (x86)\checkmk\service\check_mk_agent.exe"
 
 $ErrorCodes = @{
     1001 = "Fehlende erforderliche Parameter: Server und Instance."
@@ -31,16 +39,9 @@ $ErrorCodes = @{
     1003 = "Deinstallation fehlgeschlagen."
     1004 = "TLS-Registrierung fehlgeschlagen."
     1005 = "Agent Updater-Registrierung fehlgeschlagen."
-    1006 = "Entfernen des Checkmk-Agenten fehlgeschlagen."
     1007 = "API-Anfrage fehlgeschlagen."
     1008 = "Agent-Download fehlgeschlagen."
-    1011 = "Keine Zuordnung für Hostname: $Hostname gefunden."
-}
-
-$LocationMapping = @{
-    "deatt" = @{ Server = "deattcheckmk001"; Instance = "sat_att" }
-    "usnyc" = @{ Server = "usnyccheckmk001"; Instance = "sat_nyc" }
-    # ...
+    1009 = "Fehler beim Abrufen des FQDN."
 }
 
 function Get-LocalHostname {
@@ -93,9 +94,9 @@ function Download-Agent {
         [string]$HostName,
         [string]$OsType = "windows_msi"
     )
-    
+
     # Basis-URL der Checkmk-API
-    $ApiUrl = "${protocol}://$Server/$Instance/check_mk/api/1.0/domain-types/agent/actions/download_by_host/invoke?os_type=$OSType&host_name=$HostName"
+    $ApiUrl = "${Protocol}://$Server/$Instance/check_mk/api/1.0/domain-types/agent/actions/download_by_host/invoke?os_type=$OsType&host_name=$HostName"
 
     $AuthHeader = "Bearer $Username $Secret"
 
@@ -105,16 +106,33 @@ function Download-Agent {
     }
 
     try {
-        $Response = Invoke-RestMethod -Uri $ApiUrl -Method 'GET' -Headers $Headers -OutFile $DownloadedMSI -ErrorAction Stop
+        $InvokeParams = @{
+            Uri         = $ApiUrl
+            Method      = 'GET'
+            Headers     = $Headers
+            OutFile     = $DownloadedMSI
+            ErrorAction = 'Stop'
+        }
+
+        # PowerShell 7+ supports -SkipCertificateCheck
+        if ($PSVersionTable.PSVersion.Major -ge 7 -and $IgnoreSSL) {
+            $InvokeParams['SkipCertificateCheck'] = $true
+        }
+        elseif ($IgnoreSSL) {
+            # PowerShell 5.x workaround
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        }
+
+        Invoke-RestMethod @InvokeParams
 
         if (Test-Path -Path $DownloadedMSI) {
-            Write-Debug "Agent erfolgreich heruntergeladen: $DownloadedMSI"
+            Write-Host "Agent erfolgreich heruntergeladen: $DownloadedMSI"
         } else {
             Write-LogAndExit -ErrorCode 1008 -Message "$($ErrorCodes[1008])"
         }
     } catch {
-        write-host $($_.Exception.Message)
-        Write-LogAndExit -ErrorCode 1007 -Message "$($ErrorCodes[1008]) Exception: $($_.Exception.Message)"
+        Write-Host "Download-Fehler: $($_.Exception.Message)"
+        Write-LogAndExit -ErrorCode 1007 -Message "$($ErrorCodes[1007]) Exception: $($_.Exception.Message)"
     }
 }
 
@@ -132,27 +150,11 @@ function Uninstall-Agent {
 }
 
 function Remove-Hard {
-    Write-Debug "Uninstalling checkmk agent the hard way"
+    Write-Host "Uninstalling checkmk agent the hard way"
     Uninstall-Agent
     Remove-Item -Path "C:\ProgramData\checkmk" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Path "C:\Program Files (x86)\checkmk" -Recurse -Force -ErrorAction SilentlyContinue
-    Write-LogAndExit -ErrorCode 1006 -Message "$($ErrorCodes[1006])"
-}
-
-function Get-ServerAndInstance {
-    param (
-        [string]$Hostname,
-        [hashtable]$Mapping
-    )
-
-    $prefix = $Hostname.Substring(0, 5).ToLower()
-
-    if ($Mapping.ContainsKey($prefix)) {
-        return $Mapping[$prefix]
-    } else {
-            Write-LogAndExit -ErrorCode 1011 -Message "$($ErrorCodes[1011])"
-        exit 1
-    }
+    Write-Host "Checkmk Agent vollständig entfernt."
 }
 
 function Register-TLS {
@@ -168,7 +170,12 @@ function Register-TLS {
 }
 
 function Register-AgentUpdater {
-    Execute-Process -Command $AgentUpdaterPath -Arguments "updater register -H $Hostname -S $username -P $Secret -v" -ErrorCode 1005
+    param (
+        [string]$HostName,
+        [string]$Username,
+        [string]$Secret
+    )
+    Execute-Process -Command $AgentUpdaterPath -Arguments "updater register -H $HostName -U $Username -P $Secret -v" -ErrorCode 1005
 }
 
 function Execute-Process {
@@ -197,18 +204,13 @@ if (-not $Hostname) {
 }
 $FormattedHostname = Convert-Hostname -Hostname $Hostname -Case $Case
 
-Write-Host "Debug: Formatted - $FormattedHostname"
+Write-Host "Hostname: $FormattedHostname | Server: $Server | Site: $Instance"
 
-if (-not $Server -or -not $Instance) {
-    $ServerInstance = Get-ServerAndInstance -Hostname $Hostname -Mapping $LocationMapping
-    $Server = $ServerInstance.Server
-    $Instance = $ServerInstance.Instance
-    Write-Debug "Server:$Server Instance:$Instance"
+switch ($Task) {
+    "download"             { Download-Agent -Hostname $FormattedHostname }
+    "install"              { Install-Agent }
+    "uninstall"            { Uninstall-Agent }
+    "removehard"           { Remove-Hard }
+    "register_tls"         { Register-TLS -Hostname $FormattedHostname -Server $Server -Instance $Instance -Username $Username -Secret $Secret }
+    "register_agentupdater" { Register-AgentUpdater -HostName $FormattedHostname -Username $Username -Secret $Secret }
 }
-
-if ($Task -eq "download") { Download-Agent -Hostname $FormattedHostname }
-if ($Task -eq "install") { Install-Agent }
-if ($Task -eq "uninstall") { Uninstall-Agent }
-if ($Task -eq "removehard") { Remove-Hard }
-if ($Task -eq "register_tls") { Register-TLS -Hostname $FormattedHostname -Server $Server -Instance $Instance -Username $Username -Secret $Secret}
-if ($Task -eq "register_agentupdater") { Register-AgentUpdater }
