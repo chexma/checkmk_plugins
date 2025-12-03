@@ -13,6 +13,7 @@ param (
     [switch]$RegisterTls = $false,
     [switch]$RemoveAgentInstallationFile = $false,
     [switch]$UseCredentialPopup = $false,
+    [switch]$WorkgroupMode = $false,
 
     [string]$CheckMkServer = "",
     [string]$CheckMkSite = "",
@@ -112,6 +113,7 @@ function help {
     write-host "Authentication Options:"
     write-host "-UseCredentialPopup     :   Show a popup to enter credentials for remote connections"
     write-host "-Credential <cred>      :   Use a PSCredential object (e.g. from Get-Credential)"
+    write-host "-WorkgroupMode          :   Use NTLM authentication for non-domain (workgroup) systems"
     write-host ""
     write-host "Examples:"
     write-host ".\checkmk_agent_installer.ps1 -install"
@@ -122,6 +124,10 @@ function help {
     write-host "Using stored credentials:"
     write-host '$cred = Get-Credential'
     write-host '.\checkmk_agent_installer.ps1 -install -Credential $cred'
+    write-host ""
+    write-host "For workgroup/non-domain systems:"
+    write-host '.\checkmk_agent_installer.ps1 -install -UseCredentialPopup -WorkgroupMode'
+    write-host "Note: Username format for workgroup: COMPUTERNAME\Username or .\Username"
     write-host ""
     exit 0
 }
@@ -515,17 +521,48 @@ foreach ($Server in $Servers)
     {
 
     # Create remote session with or without credentials
-    if ( $Credential ) {
-        $installsession = New-PSSession -ComputerName $Server -Credential $Credential -ErrorAction Stop
-        if ( $EnableDebug ) {
-            write-host "Debug: Created remote session to $Server with provided credentials"
+    try {
+        $SessionParams = @{
+            ComputerName = $Server
+            ErrorAction  = 'Stop'
         }
-    }
-    else {
-        $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop
-        if ( $EnableDebug ) {
-            write-host "Debug: Created remote session to $Server using current user credentials"
+
+        if ( $Credential ) {
+            $SessionParams['Credential'] = $Credential
         }
+
+        # WorkgroupMode: Use NTLM authentication for non-domain systems
+        if ( $WorkgroupMode ) {
+            $SessionParams['Authentication'] = 'Negotiate'
+
+            # Check if server is in TrustedHosts (warning only)
+            $TrustedHosts = (Get-Item WSMan:\localhost\Client\TrustedHosts -ErrorAction SilentlyContinue).Value
+            if ( $TrustedHosts -notmatch [regex]::Escape($Server) -and $TrustedHosts -ne '*' ) {
+                Write-Warning "Server '$Server' is not in TrustedHosts. You may need to run (as Admin):"
+                Write-Warning "Set-Item WSMan:\localhost\Client\TrustedHosts -Value '$Server' -Concatenate -Force"
+            }
+
+            if ( $EnableDebug ) {
+                write-host "Debug: WorkgroupMode enabled - using Negotiate (NTLM) authentication"
+            }
+        }
+
+        $installsession = New-PSSession @SessionParams
+
+        if ( $EnableDebug ) {
+            $AuthType = if ($WorkgroupMode) { "Negotiate/NTLM" } else { "Default (Kerberos)" }
+            $CredType = if ($Credential) { "provided credentials" } else { "current user" }
+            write-host "Debug: Created remote session to $Server using $AuthType with $CredType"
+        }
+
+    } catch {
+        Write-Error "Failed to create remote session to $Server : $($_.Exception.Message)"
+
+        if ( $_.Exception.Message -match "0x80090311" ) {
+            Write-Warning "Kerberos authentication failed. For workgroup/non-domain systems, use -WorkgroupMode"
+            Write-Warning "Also ensure the target is in TrustedHosts: Set-Item WSMan:\localhost\Client\TrustedHosts -Value '$Server' -Force"
+        }
+        continue
     }
     
    
