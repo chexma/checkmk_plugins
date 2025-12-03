@@ -114,20 +114,40 @@ function help {
     write-host "-UseCredentialPopup     :   Show a popup to enter credentials for remote connections"
     write-host "-Credential <cred>      :   Use a PSCredential object (e.g. from Get-Credential)"
     write-host "-WorkgroupMode          :   Use NTLM authentication for non-domain (workgroup) systems"
+    write-host "                            Automatically converts username to COMPUTERNAME\Username format"
     write-host ""
     write-host "Examples:"
-    write-host ".\checkmk_agent_installer.ps1 -install"
-    write-host ".\checkmk_agent_installer.ps1 -install -UseCredentialPopup"
-    write-host ".\checkmk_agent_installer.ps1 -install -registeragentupdater -registertls -convertcase lowercase"
-    write-host ".\checkmk_agent_installer.ps1 -registeragentupdater -registertls -convertcase lowercase -EnableDebug"
     write-host ""
-    write-host "Using stored credentials:"
-    write-host '$cred = Get-Credential'
-    write-host '.\checkmk_agent_installer.ps1 -install -Credential $cred'
+    write-host "  Basic installation (domain environment, current user):"
+    write-host "    .\checkmk_agent_installer.ps1 -Install"
     write-host ""
-    write-host "For workgroup/non-domain systems:"
-    write-host '.\checkmk_agent_installer.ps1 -install -UseCredentialPopup -WorkgroupMode'
-    write-host "Note: Username format for workgroup: COMPUTERNAME\Username or .\Username"
+    write-host "  Installation with credential popup (domain environment):"
+    write-host "    .\checkmk_agent_installer.ps1 -Install -UseCredentialPopup"
+    write-host ""
+    write-host "  Full installation with TLS and agent updater registration:"
+    write-host "    .\checkmk_agent_installer.ps1 -Install -RegisterTls -RegisterAgentUpdater -ConvertCase lowercase"
+    write-host ""
+    write-host "  Using stored credentials:"
+    write-host '    $cred = Get-Credential'
+    write-host '    .\checkmk_agent_installer.ps1 -Install -Credential $cred'
+    write-host ""
+    write-host "  Workgroup/Non-domain systems (with credential popup):"
+    write-host "    .\checkmk_agent_installer.ps1 -Install -UseCredentialPopup -WorkgroupMode"
+    write-host ""
+    write-host "  Workgroup with stored credentials:"
+    write-host '    $cred = Get-Credential'
+    write-host '    .\checkmk_agent_installer.ps1 -Install -Credential $cred -WorkgroupMode'
+    write-host ""
+    write-host "  Workgroup full installation with debug output:"
+    write-host "    .\checkmk_agent_installer.ps1 -Install -RegisterTls -RegisterAgentUpdater -UseCredentialPopup -WorkgroupMode -EnableDebug"
+    write-host ""
+    write-host "Prerequisites for Workgroup systems:"
+    write-host "  On target server (one-time):"
+    write-host "    Enable-PSRemoting -Force"
+    write-host '    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "LocalAccountTokenFilterPolicy" -Value 1 -PropertyType DWORD -Force'
+    write-host ""
+    write-host "  On source machine (one-time, as Admin):"
+    write-host '    Set-Item WSMan:\localhost\Client\TrustedHosts -Value "TARGETSERVER" -Concatenate -Force'
     write-host ""
     exit 0
 }
@@ -510,7 +530,11 @@ if ( $help) { help }
 
 # Credential handling: Show popup or use provided credentials
 if ( $UseCredentialPopup -and -not $Credential ) {
-    $Credential = Get-Credential -Message "Enter credentials for remote PowerShell connections"
+    if ( $WorkgroupMode ) {
+        $Credential = Get-Credential -Message "Enter credentials for remote connections`nFor workgroup systems use: COMPUTERNAME\Username or .\Username"
+    } else {
+        $Credential = Get-Credential -Message "Enter credentials for remote PowerShell connections"
+    }
     if ( -not $Credential ) {
         write-host "Error: No credentials provided. Exiting."
         exit 1
@@ -534,6 +558,16 @@ foreach ($Server in $Servers)
         # WorkgroupMode: Use NTLM authentication for non-domain systems
         if ( $WorkgroupMode ) {
             $SessionParams['Authentication'] = 'Negotiate'
+
+            # Auto-fix username format for workgroup: prepend computername if missing
+            if ( $Credential -and $Credential.UserName -notmatch '\\' ) {
+                $FixedUsername = "$Server\$($Credential.UserName)"
+                $Credential = New-Object System.Management.Automation.PSCredential ($FixedUsername, $Credential.Password)
+                $SessionParams['Credential'] = $Credential
+                if ( $EnableDebug ) {
+                    write-host "Debug: Auto-converted username to '$FixedUsername' for workgroup authentication"
+                }
+            }
 
             # Check if server is in TrustedHosts (warning only)
             $TrustedHosts = (Get-Item WSMan:\localhost\Client\TrustedHosts -ErrorAction SilentlyContinue).Value
