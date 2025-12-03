@@ -18,7 +18,7 @@ param (
     [string]$RegistrationUser = "",
     [string]$UpdaterUser = "",
     [String]$RegistrationPassword = "",
-    [String]$UpdaterPassword = "`"`"",
+    [String]$UpdaterPassword = "",
 
     [ValidateSet('http', 'https')]
     [String]$protocol = 'https',
@@ -58,7 +58,7 @@ $CheckMKAgentCopyDestinationPath = $CheckmkAgentDestinationFolder + $CheckMkAgen
 function CreatePowershellSession {
     
     $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose
-    if ( $debug ) {
+    if ( $EnableDebug ) {
             write-host "Debug: Sucessfully established Powershell remote session to host $Server"
         }
 }
@@ -124,7 +124,7 @@ function AddDomainSuffix {
         [string]$DomainSuffix
 	)
 
-    if ( $debug ) {
+    if ( $EnableDebug ) {
         write-host "Debug: Hostname conversion - Adding domain suffix ""$DomainSuffix"" to hostname"
     }
     # TODO - Remove first . if existent
@@ -155,33 +155,33 @@ function RewriteHostname {
         [string]$DomainSuffix
 	)
 
-    if ( $debug ) {
-        # TODO Bessere Namen auswÃ„â€šÃ‚Â¤hlen
+    if ( $EnableDebug ) {
+        # TODO Bessere Namen auswählen
         write-host "Debug: Hostname conversion - Hostname in local hosts file: $Server, local hostname on remote server: $hostname"
     }
 
     if ( $DomainSuffix ) {
 
-        if ( $debug ) {
+        if ( $EnableDebug ) {
             write-host "Debug: Hostname conversion - Adding domain suffix enabled"
         }
 
         $hostname = AddDomainSuffix $hostname $DomainSuffix
 
-        if ( $debug ) {
+        if ( $EnableDebug ) {
             write-host "Debug: Hostname conversion - Hostname after adding domain suffix : $hostname"
         }
     }
     else {
-        if ( $debug ) {write-host "Hostname conversion - Not adding a domain suffix. none entered."}
+        if ( $EnableDebug ) {write-host "Hostname conversion - Not adding a domain suffix. none entered."}
     }
 
-    if ( $convertcase ) { 
+    if ( $convertcase ) {
 
-        if ( $debug ) {
+        if ( $EnableDebug ) {
             write-host "Debug: Hostname conversion - Starting case conversion, conversion mode: $convertcase"
         }
-    
+
         if ( $convertcase -eq "lowercase") {
             $hostname = HostnametoLowerCase $hostname
         }
@@ -191,10 +191,10 @@ function RewriteHostname {
         elseif ( $convertcase -eq "titlecase") {
             $hostname = HostnametoTitleCase $hostname
         }
-        
+
     }
     else {
-        if ( $debug ) {write-host "Hostname conversion - Not doing any case conversion, no method choosen"}
+        if ( $EnableDebug ) {write-host "Hostname conversion - Not doing any case conversion, no method choosen"}
     }
 
     write-host "Hostname conversion - Final Hostname after all conversions : $hostname"
@@ -258,28 +258,28 @@ function DoConnectionTestsOnRemoteHost {
     if ( $EnableDebug ) {write-host "Debug: Starting basic connectivity tests on host $Server..."}
 
     Invoke-Command -Session $installsession -ScriptBlock {
-    
-        if ( $registertls -or $registeragentupdater ) {
-            # Test HTTP(s) access to the checkmk Server
-	        $check_mk_base_url  = $Using:protocol + "://" + $Using:CheckMkServer + "/" + $Using:CheckMkSite + "/check_mk"
 
-	        try {
-	    		$test_connection = Invoke-WebRequest -UseBasicParsing -DisableKeepAlive -Uri $check_mk_base_url -Method 'Head' -ErrorAction 'stop' -TimeoutSec 5
-                if ( $Using:Mydebug ) {
+        if ( $Using:RegisterTls -or $Using:RegisterAgentUpdater ) {
+            # Test HTTP(s) access to the checkmk Server
+            $check_mk_base_url  = $Using:protocol + "://" + $Using:CheckMkServer + "/" + $Using:CheckMkSite + "/check_mk"
+
+            try {
+                $test_connection = Invoke-WebRequest -UseBasicParsing -DisableKeepAlive -Uri $check_mk_base_url -Method 'Head' -ErrorAction 'stop' -TimeoutSec 5
+                if ( $Using:EnableDebug ) {
                     write-host "Debug: Connectivity tests - Succesfully reached checkmk website at $check_mk_base_url, http response code was" $test_connection.StatusCode
                 }
-	        } catch {
-	    		write-host "Error : Connectivity tests - Unable to connect to check_mk url $check_mk_base_url."
-	        }
+            } catch {
+                write-host "Error : Connectivity tests - Unable to connect to check_mk url $check_mk_base_url."
+            }
 
-	        if ( $test_connection.StatusCode -ne 200) {
+            if ( $test_connection.StatusCode -ne 200) {
                 write-host "Error: Connectivity tests - Unable to access checkmk at $check_mk_base_url "
                 break
-	        }
+            }
         }
-            # Test local and remote file access
+        # Test local and remote file access
 
-        if ( $install) {    
+        if ( $Using:Install ) {
             if ( Test-Path -Path $Using:CheckMKAgentCopySourcePath ) {
                 write-host "Debug: Connectivity tests - MSI Installation Package $Using:CheckMKAgentCopySourcePath is accessible"
             }
@@ -295,7 +295,7 @@ function DoConnectionTestsOnRemoteHost {
                 write-host "Error - checkmk Agent Copy Destination folder $Using:CheckMKAgentCopySourcePath is not accessible"
                 break
             }
-        }    
+        }
     }
 }
 
@@ -307,10 +307,11 @@ function Check_Current_Deployment_State{
 # Test if checkmk binaries are installed
 function is_checkmk_agent_installed {
     Invoke-Command -Session $installsession -ScriptBlock {
-        if (-not( Test-Path -Path $CheckMkAgentBinary -Leaf) -or -not( Test-Path -Path $CheckMkControllerBinary -Leaf))  {
+        if (-not( Test-Path -Path $Using:CheckMkAgentBinary -PathType Leaf) -or -not( Test-Path -Path $Using:CheckMkControllerBinary -PathType Leaf))  {
             write-host "checkmk agent is not installed in the given path"
-            return false
+            return $false
         }
+        return $true
     }
 }
 
@@ -319,20 +320,19 @@ function CopyCheckmkAgent {
     write-host "Agent Installation - Starting to copy checkmk Agent to remote host $Server"
     Copy-Item $CheckMKAgentCopySourcePath -Destination $CheckmkAgentDestinationFolder -ToSession $installsession
     Invoke-Command -Session $installsession -ScriptBlock {
-        
-        if ( $Using:MyDebug ) {
+
+        if ( $Using:EnableDebug ) {
             write-host "Debug: Agent Installation - Copying checkmk agent from $Using:CheckMKAgentCopySourcePath to $Using:CheckmkAgentDestinationFolder on $Using:Server."
         }
 
         $StartTime = Get-Date
-        #Copy-Item -Path $Using:CheckMKAgentCopySourcePath -Destination $Using:CheckmkAgentDestinationFolder
-        
-        if ( $LASTEXITCODE -gt 0) { 
+
+        if ( $LASTEXITCODE -gt 0) {
             write-host "Error: Agent Installation - Failed to copied the check_MK Agent to $Using:CheckmkAgentDestinationFolder on $Using:Server."
             break
         }
-        else { 
-            if ( $Using:Mydebug ) {
+        else {
+            if ( $Using:EnableDebug ) {
                 write-host "Debug: Agent Installation - Successfully copied check_MK Agent to $Using:CheckmkAgentDestinationFolder on $Using:Server. The download took $((Get-Date).Subtract($StartTime).Seconds) second(s)"
             }
         }
@@ -367,36 +367,36 @@ function RegisterAgentUpdater {
 
     write-host "Registering checkmk agent updater plugin on $Server "
     Invoke-Command -Session $installsession -ScriptBlock {
-        
+
         # TODO Variable
         if (-not( Test-Path -Path "C:\Program Files (x86)\checkmk\service\check_mk_agent.exe" -PathType Leaf)) {
             write-host "checkmk is not installed in the given path."
             break
         }
 
-        if ( $Using:MyDebug ) {
+        if ( $Using:EnableDebug ) {
             write-host "Debug: Register Agent Updater - Register hostname is" $Using:hostname
         }
 
         $agent_updater_parameters = @('updater', 'register','-H',$Using:hostname,'-U',$Using:UpdaterUser,'-P',$Using:UpdaterPassword,'-v')
-        if ( $Using:MyDebug) {
+        if ( $Using:EnableDebug ) {
             write-host "Debug: Full agent updater plugin command = $Using:CheckMkAgentBinary $agent_updater_parameters"
         }
-		$register_updater_register_result = & $Using:CheckMkAgentBinary $agent_updater_parameters 2>&1   
-        
+        $register_updater_register_result = & $Using:CheckMkAgentBinary $agent_updater_parameters 2>&1
+
         if ( $LASTEXITCODE -eq 0 ) {
-            write-host "Debug: Register Agent Updater - Agent Updater registered successfully..."
-            if ( $Using:Mydebug) {
+            write-host "Register Agent Updater - Agent Updater registered successfully..."
+            if ( $Using:EnableDebug ) {
                 write-host "Debug: Register Agent Updater - Output of Agent Updater command:"
                 write-host ""
                 write-host $register_updater_register_result|Out-String
                 write-host ""
             }
-        }    
+        }
         else {
-            write-host "Debug: Register Agent Updater - failed to register agent updater"
-            write-host "Debug: Register Agent Updater - Output :" 
-            write-host $register_updater_register_tls_result
+            write-host "Error: Register Agent Updater - failed to register agent updater"
+            write-host "Error: Register Agent Updater - Output :"
+            write-host $register_updater_register_result
         }
     }
 }
@@ -419,8 +419,8 @@ function RegisterTls {
         }
 
         $agent_register_tls_parameters = @('register', '-s', $Using:CheckMkServer,'-i', $Using:CheckMkSite , '-H', $Using:hostname , '-U', $Using:RegistrationUser , '-P', $Using:RegistrationPassword, '--trust-cert')
-        
-        if ( $Using:MyDebug ) {
+
+        if ( $Using:EnableDebug ) {
             write-host "Debug: Register agent TLS - Full register tls command = $Using:CheckMkControllerBinary $agent_register_tls_parameters"
         }
 
@@ -446,41 +446,44 @@ function ForceRefreshOfAgentUpdater {
     Invoke-Command -Session $installsession -ScriptBlock {
 
         $agent_updater_parameters = @('updater', '-vf')
-        if ( $Using:MyDebug ) {
+        if ( $Using:EnableDebug ) {
             write-host "Debug: Register Agent Updater - Full agent updater refresh command = $Using:CheckMkAgentBinary $agent_updater_parameters"
-
-        $register_updater_refresh_result = & $Using:CheckMkAgentBinary $agent_updater_parameters 2>&1
         }
 
-        If ( $LASTEXITCODE -eq 0 ) {
-            if ( $Using:Mydebug) {
-                write-host "Debug: Register Agent Updater - Successfully refreshed agent updater" 
+        $register_updater_refresh_result = & $Using:CheckMkAgentBinary $agent_updater_parameters 2>&1
+
+        if ( $LASTEXITCODE -eq 0 ) {
+            write-host "Agent Updater - Successfully refreshed agent updater"
+            if ( $Using:EnableDebug ) {
+                write-host "Debug: Register Agent Updater - Output:"
+                write-host "$register_updater_refresh_result"
             }
-            else { 
-                    write-host "failed to refresh agent updater:"
-                    write-host "$register_updater_refresh_result"
-            }
+        }
+        else {
+            write-host "Error: Agent Updater - failed to refresh agent updater:"
+            write-host "$register_updater_refresh_result"
         }
     }
 }
 
 # remove Agent installation package
-function RemoveAgentMSIFile { 
+function RemoveAgentMSIFile {
     Invoke-Command -Session $installsession -ScriptBlock {
-        if ($Using:MyDebug) { write-host "Debug: Agent Installation - Deleting checkmk agent installation MSI File $Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName on Server $Server"}
-        
-        Remove-Item -Path "$Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName"
-        
-        If ( $LASTEXITCODE -eq 0 ) {
-            if ( $Using:MyDebug) {
-                write-host "Debug: Agent Installation - Succesfully deleted checkmk agent installation MSI File" 
-            }
-        else { 
-                write-host "Debug: Agent Installation - failed to delete $Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName"
-            }
+        if ($Using:EnableDebug) {
+            write-host "Debug: Agent Installation - Deleting checkmk agent installation MSI File $Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName on Server $Using:Server"
         }
 
-    }    
+        try {
+            Remove-Item -Path "$Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName" -ErrorAction Stop
+            if ( $Using:EnableDebug ) {
+                write-host "Debug: Agent Installation - Successfully deleted checkmk agent installation MSI File"
+            }
+        }
+        catch {
+            write-host "Error: Agent Installation - failed to delete $Using:CheckmkAgentDestinationFolder\$Using:CheckMkAgentPackageName"
+            write-host $_.Exception.Message
+        }
+    }
 }
 
 ########
@@ -514,11 +517,17 @@ foreach ($Server in $Servers)
         ForceRefreshOfAgentUpdater
     }
     
-    if ( $registertls ){
+    if ( $RegisterTls ){
         RegisterTls $hostname
     }
 
-    # Exit-PSSession
+    # Cleanup: Close the remote session
+    if ( $installsession ) {
+        Remove-PSSession -Session $installsession
+        if ( $EnableDebug ) {
+            write-host "Debug: Closed remote session to $Server"
+        }
+    }
 }
 
 # TODO
