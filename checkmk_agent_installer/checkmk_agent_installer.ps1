@@ -12,6 +12,7 @@ param (
     [switch]$RegisterAgentUpdater = $false,
     [switch]$RegisterTls = $false,
     [switch]$RemoveAgentInstallationFile = $false,
+    [switch]$UseCredentialPopup = $false,
 
     [string]$CheckMkServer = "",
     [string]$CheckMkSite = "",
@@ -19,6 +20,7 @@ param (
     [string]$UpdaterUser = "",
     [String]$RegistrationPassword = "",
     [String]$UpdaterPassword = "",
+    [PSCredential]$Credential = $null,
 
     [ValidateSet('http', 'https')]
     [String]$protocol = 'https',
@@ -104,15 +106,23 @@ function help {
     write-host "Possible Actions (can be combined)"
     write-host "-install                :   Copy a checkmk install package to the remote server and install it."
     write-host "-registertls            :   Register agent for TLS"
-    write-host "-RegisterAgentUpdater   :   Register aent updater plugin"
-    write-host "-debug                  :   Show Debug output."
+    write-host "-RegisterAgentUpdater   :   Register agent updater plugin"
+    write-host "-EnableDebug            :   Show Debug output."
+    write-host ""
+    write-host "Authentication Options:"
+    write-host "-UseCredentialPopup     :   Show a popup to enter credentials for remote connections"
+    write-host "-Credential <cred>      :   Use a PSCredential object (e.g. from Get-Credential)"
     write-host ""
     write-host "Examples:"
     write-host ".\checkmk_agent_installer.ps1 -install"
+    write-host ".\checkmk_agent_installer.ps1 -install -UseCredentialPopup"
     write-host ".\checkmk_agent_installer.ps1 -install -registeragentupdater -registertls -convertcase lowercase"
-    write-host ".\checkmk_agent_installer.ps1 -registeragentupdater -registertls -convertcase lowercase -debug"
+    write-host ".\checkmk_agent_installer.ps1 -registeragentupdater -registertls -convertcase lowercase -EnableDebug"
     write-host ""
-    #
+    write-host "Using stored credentials:"
+    write-host '$cred = Get-Credential'
+    write-host '.\checkmk_agent_installer.ps1 -install -Credential $cred'
+    write-host ""
     exit 0
 }
 
@@ -492,10 +502,31 @@ function RemoveAgentMSIFile {
 
 if ( $help) { help }
 
+# Credential handling: Show popup or use provided credentials
+if ( $UseCredentialPopup -and -not $Credential ) {
+    $Credential = Get-Credential -Message "Enter credentials for remote PowerShell connections"
+    if ( -not $Credential ) {
+        write-host "Error: No credentials provided. Exiting."
+        exit 1
+    }
+}
+
 foreach ($Server in $Servers)
     {
-    
-    $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop -Verbose -Debug  #-Credential get-credential
+
+    # Create remote session with or without credentials
+    if ( $Credential ) {
+        $installsession = New-PSSession -ComputerName $Server -Credential $Credential -ErrorAction Stop
+        if ( $EnableDebug ) {
+            write-host "Debug: Created remote session to $Server with provided credentials"
+        }
+    }
+    else {
+        $installsession = New-PSSession -ComputerName $Server -ErrorAction Stop
+        if ( $EnableDebug ) {
+            write-host "Debug: Created remote session to $Server using current user credentials"
+        }
+    }
     
    
     $hostname = GetHostnameOfRemoteHost
