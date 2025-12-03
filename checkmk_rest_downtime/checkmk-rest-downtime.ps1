@@ -37,7 +37,8 @@ $DownTimeType = "fixed"
 $Debug = $true
 
 # Ignore SSL/TLS errors with self signed certificates
-$ignore_tls_errors = "yes"
+# Possible options: $true | $false
+$IgnoreTlsErrors = $true
 
 # Convert local Windows hostname to exactly match the hostname in checkmk 
 # Possible options: disabled | lowercase | uppercase | titlecase
@@ -183,28 +184,29 @@ if ($ConvertHostname -ne "disabled") {
     $hostname = RewriteHostname $hostname $ConvertHostname
 }
 else {
-    write-host "Debug: Hostname conversion - Not doing any case conversion, intentionally disabled" 
+    if ( $Debug ) {
+        write-host "Debug: Hostname conversion - Not doing any case conversion, intentionally disabled"
+    }
 }
 
 if ( $debug ) { 
         write-host "Debug: Hostname conversion - Final Hostname after all conversions : $hostname" 
 }
 
-if ($ignore_tls_errors -eq "yes") {
+if ($IgnoreTlsErrors) {
     # Disable SSL verification
     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 }
 
-# Get local time of server in UTC
-$now = (get-date)
-$now_utc = (get-date).ToUniversalTime()
-$DowntimeEnds = ($now_utc).addseconds($DowntimeDuration).ToString("u") ;
-$now_string = $now.ToString("u")
+# Get current time in UTC (CheckMK API expects UTC)
+$now_utc = (Get-Date).ToUniversalTime()
+$now_string = $now_utc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+$DowntimeEnds = $now_utc.AddSeconds($DowntimeDuration).ToString("yyyy-MM-ddTHH:mm:ssZ")
 
-if ( $debug ) { 
-    write-host "Debug: Downtime Duration: $DowntimeDuration" 
-    write-host "Debug: current time: $now"
-    write-host "Debug: Downtime ends: $DowntimeEnds" 
+if ( $Debug ) {
+    write-host "Debug: Downtime Duration: $DowntimeDuration seconds"
+    write-host "Debug: Start time (UTC): $now_string"
+    write-host "Debug: End time (UTC): $DowntimeEnds"
 }
 
 # Construct http Header
@@ -241,44 +243,51 @@ if ( $Debug ) {
     write-host $Parameters
 }
 
+$EventLogSource = "checkmk-downtime-script"
+$DowntimeSuccess = $false
+
 try {
     $result = Invoke-WebRequest @Parameters
+    $DowntimeSuccess = $true
 
-    
-    $ResponseText  = ("Debug: Response - StatusCode: {0}, Status Description: {1}" -f $result.StatusCode, $result.StatusDescription)
-    $LogMessage = "Successfully set a downtime from $now until $DowntimeEnds $D$DowntimeDuration " + $ResponseText
+    $ResponseText = "StatusCode: {0}, Status: {1}" -f $result.StatusCode, $result.StatusDescription
+    $LogMessage = "Successfully set a downtime from $now_string until $DowntimeEnds ($DowntimeDuration seconds). $ResponseText"
+
     if ( $Debug ) {
-        write-host $LogMessage
+        write-host "Success: $LogMessage"
     }
 
 } catch {
-    $ResponseStatusCode = $_.Exception.Response.StatusCode  
+    $ResponseStatusCode = $_.Exception.Response.StatusCode
     $ResponseErrorMessage = $_.Exception.Message
-    $ErrorText = "Unable to set downtime for this host on checkmk server $CheckmkServer. " 
-    $ResponseErrorText = ("StatusCode: {0}, Error: {1}" -f [int]$ResponseStatusCode, $ResponseErrorMessage)
-    $LogMessage = ($ErrorText + $ResponseErrorText)
-    write-error -Message $LogMessage
+    $ErrorText = "Unable to set downtime for host '$hostname' on checkmk server $CheckmkServer. "
+    $ResponseErrorText = "StatusCode: {0}, Error: {1}" -f [int]$ResponseStatusCode, $ResponseErrorMessage
+    $LogMessage = $ErrorText + $ResponseErrorText
+    Write-Error -Message $LogMessage
 }
 
+# Write to Windows Event Log if enabled
 if ( $LogToEventLog ) {
-}
+    $EventType = if ($DowntimeSuccess) { "Information" } else { "Error" }
 
-try {
-    Write-EventLog -LogName "System" -Source "checkmk-downtime-script" -EventID 6556 -EntryType Warning -Message $LogMessage -Category 1 -ErrorAction stop
-}  catch {    
+    try {
+        Write-EventLog -LogName "System" -Source $EventLogSource -EventID 6556 -EntryType $EventType -Message $LogMessage -Category 1 -ErrorAction Stop
+    } catch {
+        Write-Warning "Failed to create Event Log entry, trying to create the Event source..."
 
-    write-error "Failed to create Event Log entry, trying to create the Event source..."
-    if(-not (Test-Administrator)) { 
-        Write-Error "This script must be executed with Administrator rights ONE time to create the necessary Windows Event Source.";
-        exit 1;
-    }
-    else {
-        if ([System.Diagnostics.EventLog]::SourceExists("checkmk-downtime-script") -eq $False) {
-            try  {
-                New-EventLog -LogName "System" -Source "checkmk_downtime_script"
-                Write-EventLog -LogName "System" -Source "checkmk_downtime_script" -EventID 6556 -EntryType Warning -Message $LogMessage -Category 1 -ErrorAction stop
-            } catch {
-                write-error "Unable to create Event Source ""checkmk_downtime_script"" in Windows System Eventlog"
+        if (-not (Test-Administrator)) {
+            Write-Error "This script must be executed with Administrator rights ONE time to create the necessary Windows Event Source."
+            exit 1
+        }
+        else {
+            if ([System.Diagnostics.EventLog]::SourceExists($EventLogSource) -eq $false) {
+                try {
+                    New-EventLog -LogName "System" -Source $EventLogSource
+                    Write-EventLog -LogName "System" -Source $EventLogSource -EventID 6556 -EntryType $EventType -Message $LogMessage -Category 1 -ErrorAction Stop
+                    Write-Host "Event source '$EventLogSource' created successfully."
+                } catch {
+                    Write-Error "Unable to create Event Source '$EventLogSource' in Windows System Eventlog: $($_.Exception.Message)"
+                }
             }
         }
     }
