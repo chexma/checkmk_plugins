@@ -98,6 +98,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
     convert_timestamp_to_epoch,
 )
 
+from typing import Any
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -112,8 +115,10 @@ from cmk.agent_based.v2 import (
 )
 
 
-def check_datacore_rest_physicaldisks(item: str, params, section) -> CheckResult:
-    """Check state of DataCore physical disks (Backend)"""
+def check_datacore_rest_physicaldisks(
+    item: str, params: Mapping[str, Any], section: Mapping[str, Any]
+) -> CheckResult:
+    """Check state of DataCore physical disks (Backend)."""
 
     data = section.get(item)
     if data is None:

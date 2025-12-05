@@ -41,6 +41,8 @@ from cmk_addons.plugins.datacore_rest.lib import (
     convert_timestamp_to_epoch,
 )
 
+from typing import Any
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -57,8 +59,8 @@ agent_section_datacore_rest_snapshots = AgentSection(
 )
 
 
-def check_datacore_rest_snapshots(section) -> CheckResult:
-    """Check state of DataCore Snapshots"""
+def check_datacore_rest_snapshots(section: list[dict[str, Any]]) -> CheckResult:
+    """Check state of DataCore Snapshots."""
 
     nr_of_snapshots = len(section)
 

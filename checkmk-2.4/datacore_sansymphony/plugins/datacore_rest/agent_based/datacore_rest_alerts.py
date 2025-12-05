@@ -55,6 +55,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
     convert_epoch_to_readable,
 )
 
+from typing import Any
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -73,8 +76,10 @@ agent_section_datacore_rest_alerts = AgentSection(
 )
 
 
-def check_datacore_rest_alerts(params, section) -> CheckResult:
-    """Check state of DataCore Alerts"""
+def check_datacore_rest_alerts(
+    params: Mapping[str, Any], section: list[dict[str, Any]]
+) -> CheckResult:
+    """Check state of DataCore Alerts."""
 
     alert_list = []
 

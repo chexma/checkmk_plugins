@@ -1576,6 +1576,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
     calculate_percentages,
 )
 
+from typing import Any
+from collections.abc import Mapping, Generator
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -1589,8 +1592,8 @@ from cmk.agent_based.v2 import (
 )
 
 
-def check_datacore_rest_servers(item: str, section) -> CheckResult:
-    """Check state of DataCore Servers"""
+def check_datacore_rest_servers(item: str, section: Mapping[str, Any]) -> CheckResult:
+    """Check state of DataCore Servers."""
 
     data = section.get(item)
     if data is None:
@@ -1696,7 +1699,9 @@ def check_datacore_rest_servers(item: str, section) -> CheckResult:
             yield Metric(description, metric)
 
 
-def host_label_datacore_rest_servers(section):
+def host_label_datacore_rest_servers(
+    section: Mapping[str, Any]
+) -> Generator[HostLabel, None, None]:
     """Generate host labels for SANsymphony hosts."""
     for item_name, data in section.items():
         # Boolean label to identify SANsymphony hosts

@@ -115,6 +115,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
 )
 
 
+from typing import Any
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -127,8 +130,8 @@ from cmk.agent_based.v2 import (
 )
 
 
-def check_datacore_rest_hosts(item: str, section) -> CheckResult:
-    """Check state of DataCore Hosts"""
+def check_datacore_rest_hosts(item: str, section: Mapping[str, Any]) -> CheckResult:
+    """Check state of DataCore Hosts."""
 
     data = section.get(item)
 

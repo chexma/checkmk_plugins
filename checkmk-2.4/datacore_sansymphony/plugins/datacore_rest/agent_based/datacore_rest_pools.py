@@ -208,6 +208,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
     calculate_percentages,
 )
 
+from typing import Any
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -229,8 +232,10 @@ from cmk.plugins.lib.df import (
 )
 
 
-def check_datacore_rest_pools(item: str, params, section) -> CheckResult:
-    """Check state of DataCore Pools"""
+def check_datacore_rest_pools(
+    item: str, params: Mapping[str, Any], section: Mapping[str, Any]
+) -> CheckResult:
+    """Check state of DataCore Pools."""
 
     value_store = get_value_store()
     data = section.get(item)
@@ -391,7 +396,9 @@ check_plugin_datacore_rest_pools = CheckPlugin(
 # Pool Capacity #
 #################
 
-def check_datacore_rest_pool_capacity(item: str, params, section) -> CheckResult:
+def check_datacore_rest_pool_capacity(
+    item: str, params: Mapping[str, Any], section: Mapping[str, Any]
+) -> CheckResult:
     data = section.get(item)
 
     if data is None:

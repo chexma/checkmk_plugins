@@ -147,6 +147,9 @@ from cmk_addons.plugins.datacore_rest.lib import (
     calculate_percentages,
 )
 
+from typing import Any
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
@@ -161,8 +164,10 @@ from cmk.agent_based.v2 import (
 )
 
 
-def check_datacore_rest_virtualdisks(item: str, params, section) -> CheckResult:
-    """Check state of DataCore Volumes"""
+def check_datacore_rest_virtualdisks(
+    item: str, params: Mapping[str, Any], section: Mapping[str, Any]
+) -> CheckResult:
+    """Check state of DataCore Volumes."""
 
     data = section.get(item)
     if data is None:

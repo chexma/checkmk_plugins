@@ -16,26 +16,28 @@
 
 import json
 import time
+from typing import Any
+
+from collections.abc import Mapping
+
 from cmk.agent_based.v2 import DiscoveryResult, Service, StringTable
 
 
-def discover_datacore_rest(section) -> DiscoveryResult:
-    "Discovers service with multiple items"
+def discover_datacore_rest(section: Mapping[str, Any]) -> DiscoveryResult:
+    """Discovers service with multiple items."""
     for item in section:
-        # Move that to the special agent ?
-        # if "Loopback" not in item:
         yield Service(item=item)
 
 
-def discover_datacore_rest_single(section) -> DiscoveryResult:
-    "Discovers service without items"
+def discover_datacore_rest_single(section: Any) -> DiscoveryResult:
+    """Discovers service without items."""
     if section:
         yield Service()
 
 
-def parse_datacore_rest(string_table: StringTable):
-    """parse json for multi item sections"""
-    parsed = {}
+def parse_datacore_rest(string_table: StringTable) -> dict[str, Any]:
+    """Parse json for multi item sections."""
+    parsed: dict[str, Any] = {}
     for line in string_table:
         entry = json.loads(line[0])
         if "Alias" in entry and entry["Alias"] is not None:
@@ -46,23 +48,23 @@ def parse_datacore_rest(string_table: StringTable):
     return parsed
 
 
-def parse_datacore_rest_single(string_table: StringTable):
-    """parse json for single item sections"""
-    parsed = {}
+def parse_datacore_rest_single(string_table: StringTable) -> list[dict[str, Any]]:
+    """Parse json for single item sections."""
+    parsed: list[dict[str, Any]] = []
     for line in string_table:
         parsed = json.loads(line[0])
     return parsed
 
 
-def convert_timestamp(timestamp):
-    "Both timestamp conversions in one place"
+def convert_timestamp(timestamp: str) -> str:
+    """Both timestamp conversions in one place."""
     epoch = convert_timestamp_to_epoch(timestamp)
     readable = convert_epoch_to_readable(epoch)
     return readable
 
 
-def convert_timestamp_to_epoch(timestamp):
-    """Converts the 'CollectionTime' string of the API objects in miliseconds into epoch (in seconds)"""
+def convert_timestamp_to_epoch(timestamp: str) -> float:
+    """Converts the 'CollectionTime' string of the API objects in miliseconds into epoch (in seconds)."""
     if '+' in timestamp:
         timestamp = timestamp.split('+', 1)[0]
         epoch_time_in_seconds = int(timestamp[6:]) / 1000
@@ -71,18 +73,18 @@ def convert_timestamp_to_epoch(timestamp):
     return epoch_time_in_seconds
 
 
-def convert_epoch_to_readable(epoch_time):
-    "Prints a human readable Format for epoch"
+def convert_epoch_to_readable(epoch_time: float) -> str:
+    """Prints a human readable Format for epoch."""
     time_object = time.localtime(epoch_time)
     formatted_date = time.strftime('%d.%m.%Y %H:%M:%S', time_object)
     return formatted_date
 
 
-def calculate_percentages(value1: int, value2: int):
-    "Returns percentages for two single values"
+def calculate_percentages(value1: int, value2: int) -> tuple[float, float]:
+    """Returns percentages for two single values."""
     total = value1 + value2
     if total <= 0:
-        return (0, 0)
+        return (0.0, 0.0)
 
     percent_value1 = (value1 / total) * 100
     percent_value2 = (value2 / total) * 100
