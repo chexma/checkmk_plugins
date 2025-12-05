@@ -143,11 +143,11 @@ def check_datacore_rest_physicaldisks(
 
     size = data["Size"]["Value"]
     # InitializationPercentage = data['InitializationPercentage']
-    sector_size = data["SectorSize"]
+    sector_size = data["SectorSize"]["Value"]
     # data['MaxReadWriteTime']
     # data['PercentAllocated']
 
-    details = f"Sector Size: {sector_size})"
+    details = f"Sector Size: {sector_size} bytes"
     message = f"size:  {render.bytes(size)}"
 
     yield Result(state=State.OK, summary=message, details=details)
