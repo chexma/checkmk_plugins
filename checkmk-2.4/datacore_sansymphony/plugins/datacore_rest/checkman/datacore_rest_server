@@ -1,0 +1,26 @@
+title: DataCore SANsymphony: Server
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors a DataCore SANsymphony storage server node.
+
+ The check monitors:
+
+ - Server running status
+ - License state (active/inactive)
+ - Cache state and mode
+ - Read and write IOPS
+ - Read and write throughput
+ - Initiator and target statistics
+ - Server configuration details
+
+ The check returns {CRIT} if the server is not running or if the
+ license is inactive, and {WARN} for degraded cache states.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+discovery:
+ One service is created for the monitored SANsymphony server.

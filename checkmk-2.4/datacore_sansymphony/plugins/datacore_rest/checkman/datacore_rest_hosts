@@ -1,0 +1,21 @@
+title: DataCore SANsymphony: Hosts
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors SAN client hosts connected to a DataCore SANsymphony
+ storage system. These are the servers that access virtual disks through
+ FC or iSCSI connections.
+
+ The check monitors host status, connection state, and displays information
+ about client ports and mapped virtual disks.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias or Caption) of the host.
+
+discovery:
+ One service is created for each connected host.

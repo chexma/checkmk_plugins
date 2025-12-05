@@ -1,0 +1,29 @@
+title: DataCore SANsymphony: Ports
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors FC (Fibre Channel) and iSCSI ports on a DataCore
+ SANsymphony storage server.
+
+ The check monitors:
+
+ - Port connection status (Connected/Disconnected)
+ - Port type (FC, iSCSI) and mode (Initiator, Target)
+ - Link error counters (CRC errors, link failures, sync losses)
+ - HBA information and firmware details
+ - Read and write IOPS
+ - Read and write throughput
+
+ The check returns {CRIT} if the port is disconnected (configurable),
+ and can alert on link error thresholds.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Caption) of the port.
+
+discovery:
+ One service is created for each port (excluding loopback ports).

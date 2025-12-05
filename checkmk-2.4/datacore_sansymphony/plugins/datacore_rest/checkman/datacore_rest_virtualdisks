@@ -1,0 +1,33 @@
+title: DataCore SANsymphony: Virtual Disks
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors virtual disks (LUNs) in a DataCore SANsymphony
+ storage system. Virtual disks are the storage volumes presented to
+ hosts via FC or iSCSI.
+
+ The check monitors:
+
+ - Virtual disk health status (Healthy, Path down, In recovery, etc.)
+ - Serving state (whether the disk is mapped to hosts)
+ - Write-through mode detection
+ - Read and write IOPS (configurable thresholds)
+ - Read and write throughput
+ - Read/write ratio
+ - Allocation percentage
+ - Compression, deduplication, and encryption status
+
+ The check returns {CRIT} for unhealthy states or full recovery,
+ {WARN} for log recovery, path down (configurable), write-through mode,
+ or unmapped disks.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias) of the virtual disk.
+
+discovery:
+ One service is created for each virtual disk (excluding snapshots).

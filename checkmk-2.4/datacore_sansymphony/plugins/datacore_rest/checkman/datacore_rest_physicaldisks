@@ -1,0 +1,29 @@
+title: DataCore SANsymphony: Physical Disks
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors backend physical disks in a DataCore SANsymphony
+ storage system. Physical disks are the actual storage devices that
+ provide capacity to storage pools.
+
+ The check monitors:
+
+ - Disk online/offline status
+ - Read and write IOPS
+ - Read and write throughput
+ - Read and write latency (configurable thresholds)
+ - Read/write ratio
+
+ The check returns {CRIT} if the disk is offline, and {OK} if online.
+ Latency thresholds can be configured through WATO rules.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias) of the physical disk.
+
+discovery:
+ One service is created for each physical disk.

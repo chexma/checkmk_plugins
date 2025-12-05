@@ -1,0 +1,18 @@
+title: DataCore SANsymphony: Alerts
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors alerts reported by a DataCore SANsymphony storage system.
+ It displays the total number of alerts and categorizes them by severity level
+ ({info}, {warning}, {error}, {trace}).
+
+ The check returns {CRIT} if any error-level alerts are present,
+ {WARN} if warning-level alerts exist, and {OK} otherwise.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+discovery:
+ One service is created for the SANsymphony system.

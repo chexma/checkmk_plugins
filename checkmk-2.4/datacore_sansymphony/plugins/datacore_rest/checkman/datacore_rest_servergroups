@@ -1,0 +1,21 @@
+title: DataCore SANsymphony: Server Groups
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors server groups in a DataCore SANsymphony storage
+ system. Server groups are logical collections of SANsymphony servers
+ that work together to provide high availability and load balancing
+ for virtual disks.
+
+ The check displays server group status and member server information.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias) of the server group.
+
+discovery:
+ One service is created for each server group.

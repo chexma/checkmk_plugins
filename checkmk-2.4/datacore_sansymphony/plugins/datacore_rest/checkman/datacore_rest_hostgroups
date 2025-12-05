@@ -1,0 +1,20 @@
+title: DataCore SANsymphony: Host Groups
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors host groups configured in a DataCore SANsymphony
+ storage system. Host groups are logical collections of hosts that share
+ access to virtual disks.
+
+ The check displays the host group status and member information.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias) of the host group.
+
+discovery:
+ One service is created for each host group.

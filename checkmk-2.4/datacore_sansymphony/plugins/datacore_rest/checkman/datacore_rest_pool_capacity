@@ -1,0 +1,26 @@
+title: DataCore SANsymphony: Pool Capacity
+agents: datacore_rest
+catalog: storage/datacore
+license: GPLv2
+distribution: andre_eckstein
+description:
+ This check monitors the capacity utilization of storage pools in a
+ DataCore SANsymphony storage system using filesystem-style thresholds.
+
+ The check supports standard CheckMK filesystem parameters including:
+
+ - Percentage-based warning and critical thresholds
+ - Magic factor for dynamic threshold adjustment based on pool size
+ - Trend computation for growth rate monitoring
+ - Minimum levels for very large pools
+
+ Default thresholds are 80% for {WARN} and 90% for {CRIT}.
+
+ This check requires the special agent configurable through
+ "DataCore SANsymphony via REST API".
+
+item:
+ The name (Alias) of the storage pool.
+
+discovery:
+ One service is created for each storage pool.
