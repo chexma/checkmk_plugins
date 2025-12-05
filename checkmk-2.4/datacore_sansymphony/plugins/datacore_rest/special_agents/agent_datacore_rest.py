@@ -19,7 +19,8 @@ import logging
 import sys
 from collections import namedtuple
 from pathlib import Path
-from typing import Any, List
+from collections.abc import Sequence
+from typing import Any
 
 import requests
 from cmk.special_agents.v0_unstable.agent_common import (
@@ -33,7 +34,7 @@ from cmk.special_agents.v0_unstable.argument_parsing import (
 from cmk.utils import password_store
 
 
-def parse_arguments(argv: List[str]) -> Args:
+def parse_arguments(argv: Sequence[str] | None) -> Args:
     sections = [
         "alerts",
         "hosts",
@@ -71,7 +72,8 @@ def parse_arguments(argv: List[str]) -> Args:
         "-m",
         "--sections",
         default=sections,
-        help=f"Comma separated list of data to query. Possible values: {','.join(sections)} (default: all)",
+        help=f"Comma separated list of data to query. "
+        f"Possible values: {','.join(sections)} (default: all)",
     )
     parser.add_argument(
         "--no-verify-ssl",
@@ -89,13 +91,14 @@ def parse_arguments(argv: List[str]) -> Args:
     return parser.parse_args(argv)
 
 
-def get_session(args):
+def get_session(args) -> requests.Session:
     """Create requests session"""
     pw_id, pw_path = args.password_id.split(":")
-    password = password_store.lookup(Path(pw_path), pw_id)
+    password: str = password_store.lookup(Path(pw_path), pw_id)
+    user: str = args.user
 
     session = requests.Session()
-    session.auth = (args.user, password)
+    session.auth = (user, password)  # type: ignore[assignment]
     session.verify = args.verify_ssl
     return session
 
@@ -261,7 +264,7 @@ def agent_datacore_rest_main(args: Any = None) -> int:
                     whole_section, api_url_base, headers, session, args
                 )
 
-            # this can be optimized :  (physicaldisks api version is 2 but its perfdata is only available in 1...)
+            # physicaldisks api version is 2 but its perfdata is only available in 1.0
             if section.name == "physicaldisks":
                 api_url_base = f"{args.proto}://{args.host}/RestService/rest.svc/1.0"
                 resources_dict[section.name] = add_perfdata(
@@ -306,6 +309,7 @@ def agent_datacore_rest_main(args: Any = None) -> int:
 
     # Close session
     session.close()
+    return 0
 
 
 def main() -> int:

@@ -175,9 +175,9 @@ rule_spec_datacore_rest_datasource_programs = SpecialAgent(
     title=Title("DataCore Sansymphony via REST API"),
     topic=Topic.STORAGE,
     parameter_form=_valuespec_special_agents_datacore_rest,
-    help_text=(
-        "This rule selects the Agent DataCore SANsymphony instead of the normal Check_MK Agent"
-        "which collects the data through the REST API."
+    help_text=Help(
+        "This rule selects the Agent DataCore SANsymphony instead of the normal Check_MK Agent "
+        "which collects the data through the REST API. "
         "Please create a read-only account in SANsymphony instead of using administrative accounts."
     ),
 )
