@@ -1569,13 +1569,6 @@
 }
 """
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    parse_datacore_rest,
-    discover_datacore_rest,
-    convert_timestamp_to_epoch,
-    calculate_percentages,
-)
-
 from typing import Any
 from collections.abc import Mapping, Generator
 
@@ -1587,8 +1580,15 @@ from cmk.agent_based.v2 import (
     State,
     Metric,
     get_value_store,
-    get_rate,
     HostLabel,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    parse_datacore_rest,
+    discover_datacore_rest,
+    convert_timestamp_to_epoch,
+    calculate_percentages,
+    calculate_performance_rates,
 )
 
 
@@ -1635,7 +1635,6 @@ def check_datacore_rest_servers(item: str, section: Mapping[str, Any]) -> CheckR
     # Perfdata
 
     if perfdata:
-
         raw_performance_counters = [
             "TotalReads",
             "TotalWrites",
@@ -1651,25 +1650,16 @@ def check_datacore_rest_servers(item: str, section: Mapping[str, Any]) -> CheckR
             "TargetBytesWritten",
         ]
 
-        # get a reference to the value_store:
         value_store = get_value_store()
-
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+        current_collection_time = convert_timestamp_to_epoch(
             data["PerformanceData"]["CollectionTime"]
         )
 
-        rate = {}
-
-        for counter in raw_performance_counters:
-            rate[counter] = round(
-                get_rate(
-                    value_store,
-                    f"{item}.{counter}",
-                    current_collection_time_in_epoch,
-                    data["PerformanceData"][counter],
-                    raise_overflow=True,
-                )
-            )
+        # Calculate rates using shared function
+        rate = calculate_performance_rates(
+            value_store, item, raw_performance_counters,
+            current_collection_time, data["PerformanceData"]
+        )
 
         message = f"Read IO/s: {rate['TotalReads']}, Write IO/s: {rate['TotalWrites']}"
         yield Result(state=State.OK, summary=message)

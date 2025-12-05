@@ -140,13 +140,6 @@ Example Output
     "WriteThrough": false
 }"""
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    parse_datacore_rest,
-    discover_datacore_rest,
-    convert_timestamp_to_epoch,
-    calculate_percentages,
-)
-
 from typing import Any
 from collections.abc import Mapping
 
@@ -159,8 +152,16 @@ from cmk.agent_based.v2 import (
     Metric,
     render,
     get_value_store,
-    get_rate,
     check_levels,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    parse_datacore_rest,
+    discover_datacore_rest,
+    convert_timestamp_to_epoch,
+    calculate_percentages,
+    calculate_performance_rates,
+    SECTOR_SIZE_512,
 )
 
 
@@ -191,9 +192,10 @@ def check_datacore_rest_virtualdisks(
         yield Result(state=State.OK, summary=virtualdisk_status)
     else:
         if virtualdisk_status == "Path down":
-            if params["virtual_disk_path_down"] == "path_down_is_warning":
+            path_down_behavior = params.get("virtual_disk_path_down", "path_down_is_warning")
+            if path_down_behavior == "path_down_is_warning":
                 yield Result(state=State.WARN, summary=virtualdisk_status)
-            elif params["virtual_disk_path_down"] == "path_down_is_ok":
+            elif path_down_behavior == "path_down_is_ok":
                 yield Result(state=State.OK, summary=virtualdisk_status)
         elif "In full recovery" in virtualdisk_status:
             yield Result(state=State.CRIT, summary=virtualdisk_status)
@@ -210,7 +212,8 @@ def check_datacore_rest_virtualdisks(
 
     if not virtualdisk_is_served:
         message = "Virtual Disk is not served to any host"
-        if params["expected_mapping"] == "virtual_disk_is_not_served":
+        expected_mapping = params.get("expected_mapping", "virtual_disk_is_served")
+        if expected_mapping == "virtual_disk_is_not_served":
             yield Result(state=State.OK, summary=message)
         else:
             yield Result(state=State.WARN, summary=message)
@@ -230,7 +233,7 @@ def check_datacore_rest_virtualdisks(
     compression_enabled = data["CompressionEnabled"]
     dedup_enabled = data["DeduplicationEnabled"]
     encryption_enabled = data["EncryptionEnabled"]
-    sector_size_unit = "B" if sector_size == 512 else "K"
+    sector_size_unit = "B" if sector_size == SECTOR_SIZE_512 else "K"
 
     details = (
         f"Recovery Priority: {recovery_priority}\n"
@@ -256,28 +259,19 @@ def check_datacore_rest_virtualdisks(
             "TotalBytesWritten",
         ]
 
-        # get a reference to the value_store:
         value_store = get_value_store()
-
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+        current_collection_time = convert_timestamp_to_epoch(
             data["PerformanceData"]["CollectionTime"]
         )
 
-        rate = {}
+        # Calculate rates using shared function
+        rate = calculate_performance_rates(
+            value_store, item, raw_performance_counters,
+            current_collection_time, data["PerformanceData"]
+        )
 
-        for counter in raw_performance_counters:
-            rate[counter] = round(
-                get_rate(
-                    value_store,
-                    f"{item}.{counter}",
-                    current_collection_time_in_epoch,
-                    data["PerformanceData"][counter],
-                    raise_overflow=True,
-                )
-            )
-
-        write_io_levels_upper = params["write_io_levels_upper"]
-        write_io_levels_lower = params["write_io_levels_lower"]
+        write_io_levels_upper = params.get("write_io_levels_upper", ("no_levels", None))
+        write_io_levels_lower = params.get("write_io_levels_lower", ("no_levels", None))
 
         yield from (
             check_levels(

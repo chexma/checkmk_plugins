@@ -197,12 +197,6 @@ Output:
     }
 }}"""
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    parse_datacore_rest,
-    discover_datacore_rest,
-    convert_timestamp_to_epoch,
-)
-
 from typing import Any
 from collections.abc import Mapping
 
@@ -216,7 +210,14 @@ from cmk.agent_based.v2 import (
     render,
     get_value_store,
     check_levels,
-    get_rate,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    parse_datacore_rest,
+    discover_datacore_rest,
+    convert_timestamp_to_epoch,
+    calculate_performance_rates,
+    PORT_SKIP_ERROR_TYPES,
 )
 
 
@@ -237,7 +238,8 @@ def check_datacore_rest_ports(
     # Connected
     if data["Connected"] is False:
         message = "Disconnected"
-        if params["expected_port_connection_status"] == "connected":
+        expected_status = params.get("expected_port_connection_status", "connected")
+        if expected_status == "connected":
             yield Result(state=State.WARN, summary=message)
         else:
             yield Result(state=State.OK, summary=message)
@@ -248,11 +250,11 @@ def check_datacore_rest_ports(
     # Link errors
     if "StateInfo" in data:
         for link_error_type in data["StateInfo"]["LinkErrors"]:
-            # Skip these error types
-            if link_error_type in ("TotalErrorCount", "PrimitiveSeqProtocolErrCount"):
+            # Skip these error types (use constant from lib.py)
+            if link_error_type in PORT_SKIP_ERROR_TYPES:
                 continue
 
-            upper_levels = params[link_error_type]
+            upper_levels = params.get(link_error_type, ("fixed", (1, 2)))
             value = data["StateInfo"]["LinkErrors"][link_error_type]
 
             yield from (
@@ -295,7 +297,6 @@ def check_datacore_rest_ports(
     ####################
 
     if perfdata:
-
         raw_performance_counters = [
             "TotalReads",
             "TotalWrites",
@@ -303,25 +304,16 @@ def check_datacore_rest_ports(
             "TotalBytesWritten",
         ]
 
-        # get a reference to the value_store:
         value_store = get_value_store()
-
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+        current_collection_time = convert_timestamp_to_epoch(
             data["PerformanceData"]["CollectionTime"]
         )
 
-        rate = {}
-
-        for counter in raw_performance_counters:
-            rate[counter] = round(
-                get_rate(
-                    value_store,
-                    f"{item}.{counter}",
-                    current_collection_time_in_epoch,
-                    data["PerformanceData"][counter],
-                    raise_overflow=True,
-                )
-            )
+        # Calculate rates using shared function
+        rate = calculate_performance_rates(
+            value_store, item, raw_performance_counters,
+            current_collection_time, data["PerformanceData"]
+        )
 
         performance_metrics = [
             ("disk_read_ios", rate["TotalReads"]),

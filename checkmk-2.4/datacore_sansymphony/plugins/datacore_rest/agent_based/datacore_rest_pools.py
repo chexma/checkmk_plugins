@@ -201,13 +201,6 @@ Output:
     "Type": 0
 """
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    parse_datacore_rest,
-    discover_datacore_rest,
-    convert_timestamp_to_epoch,
-    calculate_percentages,
-)
-
 from typing import Any
 from collections.abc import Mapping
 
@@ -220,15 +213,22 @@ from cmk.agent_based.v2 import (
     Metric,
     render,
     get_value_store,
-    get_rate,
 )
-
-from cmk.agent_based.v1 import check_levels
-
 from cmk.plugins.lib.df import (
     check_filesystem_levels,
     FILESYSTEM_DEFAULT_LEVELS,
     MAGIC_FACTOR_DEFAULT_PARAMS,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    parse_datacore_rest,
+    discover_datacore_rest,
+    convert_timestamp_to_epoch,
+    calculate_percentages,
+    calculate_performance_rates,
+    calculate_average_latency,
+    normalize_simplelevel_params,
+    SECTOR_SIZE_512,
 )
 
 
@@ -278,7 +278,7 @@ def check_datacore_rest_pools(
     ########
 
     sector_size = int(data["SectorSize"]["Value"])
-    sector_size_unit = "B" if sector_size == 512 else "K"
+    sector_size_unit = "B" if sector_size == SECTOR_SIZE_512 else "K"
 
     pool_members = []
     for member in data["PoolMembers"]:
@@ -299,7 +299,6 @@ def check_datacore_rest_pools(
     ####################
 
     if perfdata:
-
         raw_performance_counters = [
             "TotalReads",
             "TotalWrites",
@@ -309,58 +308,34 @@ def check_datacore_rest_pools(
             "TotalReadTime",
         ]
 
-        # get a reference to the value_store:
-        value_store = get_value_store()
-
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+        current_collection_time = convert_timestamp_to_epoch(
             data["PerformanceData"]["CollectionTime"]
         )
 
-        rate = {}
-        for counter in raw_performance_counters:
-            rate[counter] = round(
-                get_rate(
-                    value_store,
-                    f"{item}.{counter}",
-                    current_collection_time_in_epoch,
-                    data["PerformanceData"][counter],
-                    raise_overflow=True,
-                )
-            )
+        # Calculate rates using shared function
+        rate = calculate_performance_rates(
+            value_store, item, raw_performance_counters,
+            current_collection_time, data["PerformanceData"]
+        )
 
         # Read / Write Ratio
-
         percent_read, percent_write = calculate_percentages(
             rate["TotalReads"], rate["TotalWrites"]
         )
         message = f"Read/Write Ratio: {int(round(percent_read, 0))}/{int(round(percent_write, 0))}%"
         yield Result(state=State.OK, summary=message)
 
-        # Average Latency
-        #
-        #  From the above, the Average Time per Write = ∆ TotalWriteTime / ∆ TotalWrites.
-        #  $AverageTimeperWrite = $PhysicalDisk1PerformanceReading.TotalWritesTime / $PhysicalDisk1PerformanceReading.TotalWrites
-
-        # Only divide if new data was written
-        if rate["TotalReads"] > 0:
-            average_read_latency = round(
-                (rate["TotalReadTime"] / rate["TotalReads"]), 2
-            )
-        else:
-            average_read_latency = 0
-
-        if rate["TotalWrites"] > 0:
-            average_write_latency = round(
-                (rate["TotalWriteTime"] / rate["TotalWrites"]), 2
-            )
-        else:
-            average_write_latency = 0
+        # Average Latency using shared function
+        average_read_latency, average_write_latency = calculate_average_latency(
+            rate["TotalReads"], rate["TotalWrites"],
+            rate["TotalReadTime"], rate["TotalWriteTime"]
+        )
 
         message = f"avg. read latency: {average_read_latency}, avg. write latency: {average_write_latency}"
         yield Result(state=State.OK, summary=message)
 
-        # yield all metrics
-
+        # Yield all metrics
+        # Note: Latency from API is in milliseconds, convert to seconds for CheckMK
         performance_metrics = [
             ("disk_read_ios", rate["TotalReads"]),
             ("disk_write_ios", rate["TotalWrites"]),
@@ -369,8 +344,8 @@ def check_datacore_rest_pools(
             ("read_latency", average_read_latency / 1000),
             ("write_latency", average_write_latency / 1000),
         ]
-        for description, metric in performance_metrics:
-            yield Metric(description, metric)
+        for metric_name, metric_value in performance_metrics:
+            yield Metric(metric_name, metric_value)
 
 
 agent_section_datacore_rest_pools = AgentSection(
@@ -417,38 +392,10 @@ def check_datacore_rest_pool_capacity(
         free_mb = pool_free / 1024.0**2
         used_mb = pool_allocated / 1024.0**2
 
-        # Normalize parameters: SimpleLevels returns ('fixed', (warn, crit)) or similar
-        # but check_filesystem_levels expects just (warn, crit) or more complex dict
-        normalized_params = dict(params)
-
-        # Handle SimpleLevels format for 'levels' parameter
-        if "levels" in normalized_params:
-            levels = normalized_params["levels"]
-            if isinstance(levels, tuple) and len(levels) == 2:
-                # Check if it's SimpleLevels format: ('fixed', (warn, crit))
-                if isinstance(levels[0], str) and levels[0] in ('fixed', 'predictive', 'no_levels'):
-                    if levels[0] == 'fixed' and isinstance(levels[1], tuple):
-                        normalized_params["levels"] = levels[1]
-                    elif levels[0] == 'no_levels':
-                        normalized_params.pop("levels", None)
-
-        # Handle SimpleLevels format for 'levels_low' parameter (magic factor)
-        if "levels_low" in normalized_params:
-            levels_low = normalized_params["levels_low"]
-            if isinstance(levels_low, tuple) and len(levels_low) == 2:
-                if isinstance(levels_low[0], str) and levels_low[0] == 'fixed':
-                    normalized_params["levels_low"] = levels_low[1]
-                elif levels_low[0] == 'no_levels':
-                    normalized_params.pop("levels_low", None)
-
-        # Handle trend_perfdata SimpleLevels format
-        if "trend_perfdata" in normalized_params:
-            trend_perfdata = normalized_params["trend_perfdata"]
-            if isinstance(trend_perfdata, tuple) and len(trend_perfdata) == 2:
-                if isinstance(trend_perfdata[0], str) and trend_perfdata[0] == 'fixed':
-                    normalized_params["trend_perfdata"] = trend_perfdata[1]
-                elif trend_perfdata[0] == 'no_levels':
-                    normalized_params.pop("trend_perfdata", None)
+        # Normalize SimpleLevels parameters using shared function
+        normalized_params = normalize_simplelevel_params(
+            params, ["levels", "levels_low", "trend_perfdata"]
+        )
 
         # Use CheckMK's filesystem checking with magic factor support
         yield from check_filesystem_levels(

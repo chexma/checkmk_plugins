@@ -20,7 +20,25 @@ from typing import Any
 
 from collections.abc import Mapping
 
-from cmk.agent_based.v2 import DiscoveryResult, Service, StringTable
+from cmk.agent_based.v2 import DiscoveryResult, Service, StringTable, get_rate
+
+# =============================================================================
+# Constants
+# =============================================================================
+
+# API Constants
+PASSWORD_STORE_DELIMITER = ":"
+API_TIMEOUT_SECONDS = 5
+
+# Display Constants
+ALERT_DISPLAY_LIMIT = 10
+SNAPSHOT_DISPLAY_LIMIT = 10
+
+# Sector Size
+SECTOR_SIZE_512 = 512
+
+# Port Error Types to Skip
+PORT_SKIP_ERROR_TYPES = frozenset({"TotalErrorCount", "PrimitiveSeqProtocolErrCount"})
 
 
 def discover_datacore_rest(section: Mapping[str, Any]) -> DiscoveryResult:
@@ -89,3 +107,124 @@ def calculate_percentages(value1: int, value2: int) -> tuple[float, float]:
     percent_value1 = (value1 / total) * 100
     percent_value2 = (value2 / total) * 100
     return percent_value1, percent_value2
+
+
+# =============================================================================
+# Performance Rate Calculation
+# =============================================================================
+
+def calculate_performance_rates(
+    value_store: Any,
+    item: str,
+    counters: list[str],
+    collection_time: float,
+    perf_data: dict[str, Any],
+    raise_overflow: bool = True
+) -> dict[str, int]:
+    """Calculate rates for performance counters.
+
+    Args:
+        value_store: CheckMK value store from get_value_store()
+        item: Service item name for unique counter keys
+        counters: List of counter names to calculate rates for
+        collection_time: Current collection time in epoch seconds
+        perf_data: Performance data dictionary containing counter values
+        raise_overflow: Whether to raise on counter overflow
+
+    Returns:
+        Dictionary mapping counter names to their calculated rates (per second)
+    """
+    rate = {}
+    for counter in counters:
+        rate[counter] = round(
+            get_rate(
+                value_store,
+                f"{item}.{counter}",
+                collection_time,
+                perf_data[counter],
+                raise_overflow=raise_overflow,
+            )
+        )
+    return rate
+
+
+def calculate_average_latency(
+    total_reads: int,
+    total_writes: int,
+    total_read_time: int,
+    total_write_time: int
+) -> tuple[float, float]:
+    """Calculate average read and write latency.
+
+    Args:
+        total_reads: Number of read operations (rate)
+        total_writes: Number of write operations (rate)
+        total_read_time: Total read time (rate)
+        total_write_time: Total write time (rate)
+
+    Returns:
+        Tuple of (avg_read_latency, avg_write_latency)
+    """
+    avg_read = round((total_read_time / total_reads), 2) if total_reads > 0 else 0.0
+    avg_write = round((total_write_time / total_writes), 2) if total_writes > 0 else 0.0
+    return avg_read, avg_write
+
+
+# =============================================================================
+# Parameter Normalization
+# =============================================================================
+
+def normalize_simplelevel_params(
+    params: Mapping[str, Any],
+    keys: list[str]
+) -> dict[str, Any]:
+    """Normalize SimpleLevels parameters from ruleset format.
+
+    SimpleLevels from CheckMK rulesets returns: ('fixed', (warn, crit)) or ('no_levels', None)
+    check_filesystem_levels expects: (warn, crit) or absent key
+
+    Args:
+        params: Original parameters from ruleset
+        keys: List of parameter keys to normalize
+
+    Returns:
+        Normalized parameters dictionary
+    """
+    normalized = dict(params)
+    for key in keys:
+        if key not in normalized:
+            continue
+        value = normalized[key]
+        if isinstance(value, tuple) and len(value) == 2:
+            mode, levels = value
+            if mode == 'fixed' and isinstance(levels, tuple):
+                normalized[key] = levels
+            elif mode in ('no_levels', 'predictive'):
+                normalized.pop(key, None)
+    return normalized
+
+
+# =============================================================================
+# Safe Data Access
+# =============================================================================
+
+def safe_get(data: dict, *keys, default: Any = None) -> Any:
+    """Safely get nested dictionary value.
+
+    Args:
+        data: Dictionary to access
+        *keys: Sequence of keys to traverse
+        default: Default value if key not found
+
+    Returns:
+        Value at nested key path or default
+
+    Example:
+        safe_get(data, "PerformanceData", "TotalReads", default=0)
+    """
+    current = data
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+    return current

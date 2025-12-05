@@ -48,13 +48,6 @@ Output:
     "Visibility": 64
 }"""
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    discover_datacore_rest_single,
-    parse_datacore_rest_single,
-    convert_timestamp_to_epoch,
-    convert_epoch_to_readable,
-)
-
 from typing import Any
 from collections.abc import Mapping
 
@@ -66,6 +59,15 @@ from cmk.agent_based.v2 import (
     State,
     Metric,
     check_levels,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    discover_datacore_rest_single,
+    parse_datacore_rest_single,
+    convert_timestamp_to_epoch,
+    convert_epoch_to_readable,
+    safe_get,
+    ALERT_DISPLAY_LIMIT,
 )
 
 
@@ -88,44 +90,50 @@ def check_datacore_rest_alerts(
     alerts = section[0] if section and isinstance(section[0], list) else section
 
     for alert in alerts:
-        text_string = alert["MessageText"]
+        # Use safe_get for robust field access
+        message_text = safe_get(alert, "MessageText", default="Unknown alert")
+        message_data = safe_get(alert, "MessageData")
+        timestamp = safe_get(alert, "TimeStamp")
+
+        if not timestamp:
+            continue  # Skip alerts without timestamp
+
+        text_string = message_text
 
         # Replace the {0} {1}... placeholders in the alert text string with the data from the MessageData dictionary
-        if alert["MessageData"] is not None:
-            nr_of_placeholders = len(alert["MessageData"])
-            text_string = alert["MessageText"]
-            for message in range(nr_of_placeholders):
-                placeholder = "{" + str(message) + "}"
+        if message_data is not None:
+            nr_of_placeholders = len(message_data)
+            for message_idx in range(nr_of_placeholders):
+                placeholder = "{" + str(message_idx) + "}"
                 if placeholder in text_string:
-                    text_string = text_string.replace(
-                        placeholder, alert["MessageData"][message]
-                    )
+                    replacement = str(message_data[message_idx]) if message_data[message_idx] else ""
+                    text_string = text_string.replace(placeholder, replacement)
 
-        if params["remove_support_bundle_messages"] == "remove":
-            if "Support bundle" in text_string:
-                continue
+        remove_support = params.get("remove_support_bundle_messages", "remove")
+        if remove_support == "remove" and "Support bundle" in text_string:
+            continue
 
-        alert_list.append((convert_timestamp_to_epoch(alert["TimeStamp"]), text_string))
+        alert_list.append((convert_timestamp_to_epoch(timestamp), text_string))
 
     if len(alert_list) == 0:
         yield Metric("alerts", 0)
         yield Result(state=State.OK, summary="No alerts present")
         return
 
-    nr_of_alerts = int(len(alert_list))
+    nr_of_alerts = len(alert_list)
     sorted_alerts = sorted(alert_list, key=lambda x: x[0], reverse=True)
-    top_ten_entries = sorted_alerts[:10]
+    top_entries = sorted_alerts[:ALERT_DISPLAY_LIMIT]
 
     details = ""
-    for date, message in top_ten_entries:
+    for date, message in top_entries:
         details += f"{convert_epoch_to_readable(date)} {message} \n"
 
     latest_entry = (
-        f"{convert_epoch_to_readable(top_ten_entries[0][0])}: "
-        f"{top_ten_entries[0][1][:80]}"
+        f"{convert_epoch_to_readable(top_entries[0][0])}: "
+        f"{top_entries[0][1][:80]}"
     )
 
-    upper_levels = params["number_of_alerts"]
+    upper_levels = params.get("number_of_alerts", ("fixed", (1, 1)))
 
     yield from (
         check_levels(

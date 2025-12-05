@@ -91,13 +91,6 @@
     "Usage": "In pool \"Disk pool 1\""
 }"""
 
-from cmk_addons.plugins.datacore_rest.lib import (
-    parse_datacore_rest,
-    discover_datacore_rest,
-    calculate_percentages,
-    convert_timestamp_to_epoch,
-)
-
 from typing import Any
 from collections.abc import Mapping
 
@@ -110,8 +103,16 @@ from cmk.agent_based.v2 import (
     Metric,
     render,
     get_value_store,
-    get_rate,
     check_levels,
+)
+
+from cmk_addons.plugins.datacore_rest.lib import (
+    parse_datacore_rest,
+    discover_datacore_rest,
+    calculate_percentages,
+    convert_timestamp_to_epoch,
+    calculate_performance_rates,
+    calculate_average_latency,
 )
 
 
@@ -153,7 +154,6 @@ def check_datacore_rest_physicaldisks(
     yield Result(state=State.OK, summary=message, details=details)
 
     if perfdata:
-
         raw_performance_counters = [
             "TotalReads",
             "TotalWrites",
@@ -163,24 +163,16 @@ def check_datacore_rest_physicaldisks(
             "TotalReadsTime",
         ]
 
-        # get a reference to the value_store:
         value_store = get_value_store()
-
-        current_collection_time_in_epoch = convert_timestamp_to_epoch(
+        current_collection_time = convert_timestamp_to_epoch(
             data["PerformanceData"]["CollectionTime"]
         )
 
-        rate = {}
-        for counter in raw_performance_counters:
-            rate[counter] = round(
-                get_rate(
-                    value_store,
-                    f"{item}.{counter}",
-                    current_collection_time_in_epoch,
-                    data["PerformanceData"][counter],
-                    raise_overflow=True,
-                )
-            )
+        # Calculate rates using shared function
+        rate = calculate_performance_rates(
+            value_store, item, raw_performance_counters,
+            current_collection_time, data["PerformanceData"]
+        )
 
         message = f"Read IO/s: {rate['TotalReads']}, Write IO/s: {rate['TotalWrites']}"
         yield Result(state=State.OK, summary=message)
@@ -192,25 +184,13 @@ def check_datacore_rest_physicaldisks(
         message = f"Read / Write Ratio: {round(percent_read)}/{round(percent_write)}%"
         yield Result(state=State.OK, summary=message)
 
-        # Average Latency
+        # Average Latency using shared function
+        average_read_latency, average_write_latency = calculate_average_latency(
+            rate["TotalReads"], rate["TotalWrites"],
+            rate["TotalReadsTime"], rate["TotalWritesTime"]
+        )
 
-        #  From the above, the Average Time per Write = ∆ TotalWriteTime / ∆ TotalWrites.
-        #  $AverageTimeperWrite = $PhysicalDisk1PerformanceReading.TotalWritesTime / $PhysicalDisk1PerformanceReading.TotalWrites
-
-        if rate["TotalReads"] > 0:
-            average_read_latency = round(
-                (rate["TotalReadsTime"] / rate["TotalReads"]), 2
-            )
-        else:
-            average_read_latency = 0
-        if rate["TotalWrites"] > 0:
-            average_write_latency = round(
-                (rate["TotalWritesTime"] / rate["TotalWrites"]), 2
-            )
-        else:
-            average_write_latency = 0
-
-        upper_read_latency_levels = params["upper_read_latency_levels"]
+        upper_read_latency_levels = params.get("upper_read_latency_levels", ("no_levels", None))
         yield from (
             check_levels(
                 average_read_latency,
@@ -220,7 +200,7 @@ def check_datacore_rest_physicaldisks(
             )
         )
 
-        upper_write_latency_levels = params["upper_write_latency_levels"]
+        upper_write_latency_levels = params.get("upper_write_latency_levels", ("no_levels", None))
         yield from (
             check_levels(
                 average_write_latency,
@@ -230,7 +210,8 @@ def check_datacore_rest_physicaldisks(
             )
         )
 
-        # yield all metrics
+        # Yield all metrics
+        # Note: Latency from API is in milliseconds, convert to seconds for CheckMK
         performance_metrics = [
             ("disk_read_ios", rate["TotalReads"]),
             ("disk_write_ios", rate["TotalWrites"]),
