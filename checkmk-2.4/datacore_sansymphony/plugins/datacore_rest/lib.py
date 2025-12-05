@@ -52,7 +52,7 @@ def parse_datacore_rest_single(string_table: StringTable) -> list[dict[str, Any]
     """Parse json for single item sections."""
     parsed: list[dict[str, Any]] = []
     for line in string_table:
-        parsed = json.loads(line[0])
+        parsed.append(json.loads(line[0]))
     return parsed
 
 

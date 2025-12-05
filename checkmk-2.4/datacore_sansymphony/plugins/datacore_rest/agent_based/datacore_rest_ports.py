@@ -248,9 +248,9 @@ def check_datacore_rest_ports(
     # Link errors
     if "StateInfo" in data:
         for link_error_type in data["StateInfo"]["LinkErrors"]:
-            # We don´t need these
+            # Skip these error types
             if link_error_type in ("TotalErrorCount", "PrimitiveSeqProtocolErrCount"):
-                break
+                continue
 
             upper_levels = params[link_error_type]
             value = data["StateInfo"]["LinkErrors"][link_error_type]
@@ -316,7 +316,7 @@ def check_datacore_rest_ports(
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,

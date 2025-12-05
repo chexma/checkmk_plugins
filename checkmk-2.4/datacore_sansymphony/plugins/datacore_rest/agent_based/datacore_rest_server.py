@@ -1664,7 +1664,7 @@ def check_datacore_rest_servers(item: str, section: Mapping[str, Any]) -> CheckR
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,
@@ -1675,7 +1675,6 @@ def check_datacore_rest_servers(item: str, section: Mapping[str, Any]) -> CheckR
         yield Result(state=State.OK, summary=message)
 
         # Read / Write Ratio
-        # TODO yield Metric
         percent_read, percent_write = calculate_percentages(
             rate["TotalReads"], rate["TotalWrites"]
         )
@@ -1711,7 +1710,7 @@ def host_label_datacore_rest_servers(
         if version := data.get("ProductVersion"):
             yield HostLabel("datacore_sansymphony/product_version", version)
 
-        # Nur ersten Server verarbeiten (ein Host = ein SANsymphony-Server)
+        # Process only first server (one host = one SANsymphony server)
         break
 
 

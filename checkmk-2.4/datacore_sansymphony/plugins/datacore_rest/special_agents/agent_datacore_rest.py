@@ -14,6 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
+import base64
 import logging
 import sys
 from collections import namedtuple
@@ -73,10 +74,11 @@ def parse_arguments(argv: List[str]) -> Args:
         help=f"Comma separated list of data to query. Possible values: {','.join(sections)} (default: all)",
     )
     parser.add_argument(
-        "-l",
-        "--verify_ssl",
-        action="store_true",
-        default=False,
+        "--no-verify-ssl",
+        dest="verify_ssl",
+        action="store_false",
+        default=True,
+        help="Disable SSL certificate verification (not recommended for production)",
     )
     parser.add_argument(
         "host",
@@ -186,8 +188,6 @@ def get_id_of_servername(servername, api_url_base, headers, session, args):
 def agent_datacore_rest_main(args: Any = None) -> int:
     """Main Special Agent"""
 
-    print(args)
-
     Section = namedtuple(
         "Section", ["name", "api_version", "has_perfdata", "item_identifier"]
     )
@@ -221,21 +221,31 @@ def agent_datacore_rest_main(args: Any = None) -> int:
         ),
     ]
 
-    # Session erstellen
+    # Create session
     session = get_session(args)
 
+    # Get password for Basic Auth header
     pw_id, pw_path = args.password_id.split(":")
     password = password_store.lookup(Path(pw_path), pw_id)
 
+    # Create proper Base64 encoded auth header
+    auth_string = f"{args.user}:{password}"
+    auth_bytes = base64.b64encode(auth_string.encode()).decode()
     headers = {
         "ServerHost": args.nodename,
-        "Authorization": "Basic " + args.user + " " + password,
+        "Authorization": f"Basic {auth_bytes}",
     }
     base_api_url = f"{args.proto}://{args.host}/RestService/rest.svc"
 
     my_server_id = get_id_of_servername(
         args.nodename, f"{base_api_url}/1.0", headers, session, args
     )
+
+    # Validate server ID was found
+    if my_server_id is None:
+        logging.error("Server '%s' not found in SANsymphony", args.nodename)
+        session.close()
+        sys.exit(1)
 
     resources_dict = {}
 
@@ -293,6 +303,9 @@ def agent_datacore_rest_main(args: Any = None) -> int:
                     else:
                         with SectionWriter(f"datacore_rest_{section.name}") as writer:
                             writer.append_json(item)
+
+    # Close session
+    session.close()
 
 
 def main() -> int:

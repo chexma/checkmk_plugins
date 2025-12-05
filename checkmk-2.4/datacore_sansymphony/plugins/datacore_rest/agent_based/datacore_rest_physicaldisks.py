@@ -175,7 +175,7 @@ def check_datacore_rest_physicaldisks(
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,
@@ -210,7 +210,7 @@ def check_datacore_rest_physicaldisks(
         else:
             average_write_latency = 0
 
-        upper_read_latency_levels = params["upper_write_latency_levels"]
+        upper_read_latency_levels = params["upper_read_latency_levels"]
         yield from (
             check_levels(
                 average_read_latency,

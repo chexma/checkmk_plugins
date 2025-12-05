@@ -228,7 +228,7 @@ def check_datacore_rest_virtualdisks(
     sector_size = data["SectorSize"]["Value"]
     writethrough_enabled = data["WriteThrough"]
     compression_enabled = data["CompressionEnabled"]
-    dedup_enabled = ["DeduplicationEnabled"]
+    dedup_enabled = data["DeduplicationEnabled"]
     encryption_enabled = data["EncryptionEnabled"]
     sector_size_unit = "B" if sector_size == 512 else "K"
 
@@ -269,7 +269,7 @@ def check_datacore_rest_virtualdisks(
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,

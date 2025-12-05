@@ -19,8 +19,9 @@ class Params(BaseModel):
     user: str | None = None
     password: Secret | None = None
     proto: tuple[str, str | None]
-    sections: list | None = None
+    sections: list[str] | None = None
     nodename: str | None = None
+    verify_ssl: str | None = None
 
 
 def generate_datacore_rest_command(
@@ -40,9 +41,13 @@ def generate_datacore_rest_command(
         command_arguments += ["--sections", ",".join(params.sections)]
 
     if params.nodename is not None:
-        command_arguments += ["--nodename", (params.nodename)]
+        command_arguments += ["--nodename", params.nodename]
     else:
         command_arguments += ["--nodename", host_config.name]
+
+    # Add --no-verify-ssl flag if SSL verification is disabled
+    if params.verify_ssl == "no_verify":
+        command_arguments.append("--no-verify-ssl")
 
     command_arguments.append(host_config.primary_ip_config.address or host_config.name)
 

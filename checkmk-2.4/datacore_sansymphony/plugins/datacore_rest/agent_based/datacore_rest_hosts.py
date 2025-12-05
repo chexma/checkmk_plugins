@@ -14,7 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-""" "
+"""
 Output:
 
 {
@@ -204,7 +204,7 @@ def check_datacore_rest_hosts(item: str, section: Mapping[str, Any]) -> CheckRes
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,

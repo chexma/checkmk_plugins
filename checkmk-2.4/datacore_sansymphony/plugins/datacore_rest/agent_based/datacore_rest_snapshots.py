@@ -59,10 +59,14 @@ agent_section_datacore_rest_snapshots = AgentSection(
 )
 
 
-def check_datacore_rest_snapshots(section: list[dict[str, Any]]) -> CheckResult:
+def check_datacore_rest_snapshots(section: list[Any]) -> CheckResult:
     """Check state of DataCore Snapshots."""
 
-    nr_of_snapshots = len(section)
+    # The section is a list containing a single list of snapshots: [[snap1, snap2, ...]]
+    # Flatten it to get the actual snapshots
+    snapshots = section[0] if section and isinstance(section[0], list) else section
+
+    nr_of_snapshots = len(snapshots)
 
     if nr_of_snapshots == 0:
         message = "No Snapshots present"
@@ -72,7 +76,7 @@ def check_datacore_rest_snapshots(section: list[dict[str, Any]]) -> CheckResult:
 
     snapshot_list = []
 
-    for snapshot in section:
+    for snapshot in snapshots:
         name = snapshot["Caption"]
         timestamp = snapshot["TimeStamp"]
         snapshot_list.append((convert_timestamp_to_epoch(timestamp), name))

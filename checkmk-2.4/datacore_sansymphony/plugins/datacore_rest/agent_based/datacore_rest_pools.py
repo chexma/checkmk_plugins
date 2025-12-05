@@ -14,7 +14,7 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-""" "
+"""
 Output:
 
 {
@@ -282,7 +282,7 @@ def check_datacore_rest_pools(
 
     pool_members = []
     for member in data["PoolMembers"]:
-        pool_members.append(f"{member["Caption"]}")
+        pool_members.append(member["Caption"])
 
     details = (
         f"Max. Nr. of tiers: {data['MaxTierNumber']}\n"
@@ -292,7 +292,7 @@ def check_datacore_rest_pools(
         f"Sector Size: {sector_size}{sector_size_unit}"
     )
 
-    yield Result(state=State.OK, notice="test", details=details)
+    yield Result(state=State.OK, notice="Pool configuration details available", details=details)
 
     ####################
     # Performance Data #
@@ -321,7 +321,7 @@ def check_datacore_rest_pools(
             rate[counter] = round(
                 get_rate(
                     value_store,
-                    counter,
+                    f"{item}.{counter}",
                     current_collection_time_in_epoch,
                     data["PerformanceData"][counter],
                     raise_overflow=True,

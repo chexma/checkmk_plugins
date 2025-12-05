@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ruleset definition for DataCore Sansymphony Ports"""
+"""Ruleset definition for DataCore SANsymphony Ports"""
 
 
 from cmk.rulesets.v1 import Title
@@ -87,7 +87,7 @@ def _parameter_valuespec_datacore_rest_ports():
 
 rule_spec_datacore_rest_ports = CheckParameters(
     name="datacore_rest_ports",
-    topic=Topic.APPLICATIONS,
+    topic=Topic.STORAGE,
     condition=HostAndItemCondition(item_title=Title("SANsymphony Port")),
     parameter_form=_parameter_valuespec_datacore_rest_ports,
     title=Title("SANsymphony Port"),

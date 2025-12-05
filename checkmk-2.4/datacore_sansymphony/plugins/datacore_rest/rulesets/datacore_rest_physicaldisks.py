@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ruleset definition for Windows firewall status check"""
+"""Ruleset definition for DataCore SANsymphony Physical Disks"""
 
 # (c) Andreas Doehler 'andreas.doehler@bechtle.com'
 # License: GNU General Public License v2
@@ -63,7 +63,7 @@ def _parameter_valuespec_datacore_rest_physicaldisks():
 
 rule_spec_datacore_rest_physicaldisks = CheckParameters(
     name="datacore_rest_physicaldisks",
-    topic=Topic.APPLICATIONS,
+    topic=Topic.STORAGE,
     condition=HostAndItemCondition(item_title=Title("SANsymphony Physical Disk")),
     parameter_form=_parameter_valuespec_datacore_rest_physicaldisks,
     title=Title("SANsymphony Physical Disk"),

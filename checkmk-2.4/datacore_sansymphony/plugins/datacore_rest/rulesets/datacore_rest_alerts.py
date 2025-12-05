@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ruleset definition for DataCore Sansymphony Ports"""
+"""Ruleset definition for DataCore SANsymphony Alerts"""
 
 
 from cmk.rulesets.v1 import Title
@@ -53,7 +53,7 @@ def _parameter_valuespec_datacore_rest_alerts():
 
 rule_spec_datacore_rest_alerts = CheckParameters(
     name="datacore_rest_alerts",
-    topic=Topic.APPLICATIONS,
+    topic=Topic.STORAGE,
     condition=HostCondition(),
     parameter_form=_parameter_valuespec_datacore_rest_alerts,
     title=Title("SANsymphony Alerts"),

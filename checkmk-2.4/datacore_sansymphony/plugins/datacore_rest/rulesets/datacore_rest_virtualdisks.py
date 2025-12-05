@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ruleset definition for Windows firewall status check"""
+"""Ruleset definition for DataCore SANsymphony Virtual Disks"""
 
 # (c) Andreas Doehler 'andreas.doehler@bechtle.com'
 # License: GNU General Public License v2
@@ -93,9 +93,9 @@ def _parameter_valuespec_datacore_rest_virtualdisks():
     )
 
 
-rule_spec_datacore_rest_ports = CheckParameters(
+rule_spec_datacore_rest_virtualdisks = CheckParameters(
     name="datacore_rest_virtualdisks",
-    topic=Topic.APPLICATIONS,
+    topic=Topic.STORAGE,
     condition=HostAndItemCondition(item_title=Title("SANsymphony Virtual Disk")),
     parameter_form=_parameter_valuespec_datacore_rest_virtualdisks,
     title=Title("SANsymphony Virtual Disk"),

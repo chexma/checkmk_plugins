@@ -77,13 +77,17 @@ agent_section_datacore_rest_alerts = AgentSection(
 
 
 def check_datacore_rest_alerts(
-    params: Mapping[str, Any], section: list[dict[str, Any]]
+    params: Mapping[str, Any], section: list[Any]
 ) -> CheckResult:
     """Check state of DataCore Alerts."""
 
     alert_list = []
 
-    for alert in section:
+    # The section is a list containing a single list of alerts: [[alert1, alert2, ...]]
+    # Flatten it to get the actual alerts
+    alerts = section[0] if section and isinstance(section[0], list) else section
+
+    for alert in alerts:
         text_string = alert["MessageText"]
 
         # Replace the {0} {1}... placeholders in the alert text string with the data from the MessageData dictionary
@@ -99,7 +103,7 @@ def check_datacore_rest_alerts(
 
         if params["remove_support_bundle_messages"] == "remove":
             if "Support bundle" in text_string:
-                break
+                continue
 
         alert_list.append((convert_timestamp_to_epoch(alert["TimeStamp"]), text_string))
 
