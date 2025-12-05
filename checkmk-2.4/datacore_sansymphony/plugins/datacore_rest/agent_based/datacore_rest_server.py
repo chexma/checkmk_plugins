@@ -1585,6 +1585,7 @@ from cmk.agent_based.v2 import (
     Metric,
     get_value_store,
     get_rate,
+    HostLabel,
 )
 
 
@@ -1695,10 +1696,25 @@ def check_datacore_rest_servers(item: str, section) -> CheckResult:
             yield Metric(description, metric)
 
 
+def host_label_datacore_rest_servers(section):
+    """Generate host labels for SANsymphony hosts."""
+    for item_name, data in section.items():
+        # Boolean label to identify SANsymphony hosts
+        yield HostLabel("datacore_sansymphony", "true")
+
+        # Product version
+        if version := data.get("ProductVersion"):
+            yield HostLabel("datacore_sansymphony/product_version", version)
+
+        # Nur ersten Server verarbeiten (ein Host = ein SANsymphony-Server)
+        break
+
+
 agent_section_datacore_rest_servers = AgentSection(
     name="datacore_rest_servers",
     parse_function=parse_datacore_rest,
     parsed_section_name="datacore_rest_servers",
+    host_label_function=host_label_datacore_rest_servers,
 )
 
 
