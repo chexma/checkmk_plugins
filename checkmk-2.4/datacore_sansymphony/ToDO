@@ -2,161 +2,78 @@
 # In General #
 ##############
 
-# Everywhere
-
-- Better type hints and Class definitions
-- More iSCSI related stuff, currently everything is probably very FC related
 - Create a SANsymphony Dashboard
-
-# Server Side Call
-
-- Set default protocol to https in ssc ruleset
-- Add Parameter for verify_ssl in ssc ruleset, current default is always verify=False
-- Yield host labels for a SANsyhomphony Dashboard
 
 # Metrics
 
-- Read / Write Ratio Metric definition
-- Server Metric Definitions
 - Metric Name Translation of "Average End to End Wait Time"
 
 #################
-# Bugs          #
-#################
-
-- Fix ZeroDivisionError (float division by zero) in Pool calculation when not a single IO was present during the check interval
-- Fix Sector Size {Value} shown in Physical Disks
-- FIx Dedup enabled: ['DeduplicationEnabled'] in Virtual Disks
-
-#################
-# check Plugins #
+# Open Tasks    #
 #################
 
 Alerts
 ------
-
-1. Status
-
-2. Informations
-
-3. Performance Metrics
-
-4. Configurable Parameters
+- Nothing open
 
 Capacity Optimization
 ---------------------
+- Not implemented yet
 
 Events
-----
-
+------
 - Get critical events for the objects ? Found nothing in the api documentation.
 
 Hosts
 -----
-
-1. Status
-
-2. Informations
-
-3. Performance Metrics
-
-4. Configurable Parameters
+- Nothing open
 
 Hostgroups
 ----------
-
-Only informational
+- Only informational (as designed)
 
 Licences
 --------
-
-- Get all licenses
+- Get all licenses (new feature)
 
 Ports
 -----
-
-1. Status
-
-2. Informations
-
-3. Performance Metrics
-
-    - Combine all link errors in one metric
-
-4. Configurable Parameters
-
-    - thresholds on latency ?
+- Combine all link errors in one metric
+- Thresholds on latency ?
 
 Virtual Disks
 -------------
-
-1. Status
-
-
 2. Informations
-
     - Add Description to details
     - Add NAA Identifier
-    - reserved space  
+    - Reserved space
     - CDP
-    - Dedup / Compression / Capacity Optimazation ratio
+    - Dedup / Compression / Capacity Optimization ratio
     - Storage Profile from /storageprofiles
 
-3. Performance Metrics
-
-    - Read/Write Ratio
-    - Initialization Percentage
-    - Percent Allocated
+Pools
+-----
+2. Informations
+    - In Reclamation
+    - SAU Size
 
 4. Configurable Parameters
-
+    - Thresholds on latency
+    - Threshold on oversubscription in Bytes ?
 
 Physical Disks
 --------------
-
-1. Status
-
 2. Informations
-
     - Vendor
     - Product
     - Unique Identifier
 
-3. Performance Metrics
-
-4. Configurable Parameters
-
-
-
-Pools
------
-
-1. Status
-
-    - Pool Status (Online / Offline)
-
-2. Informations
-
-    - In Reclamation
-    - SAU Size
-
-3. Performance Metrics
-    - 
-
-4. Configurable Parameters
-
-    - thresholds on latency
-    - Threshold on oversubscription in Bytes ?
-    - Implement Magic Factor
-
 Replication
 -----------
-
+- Not implemented yet
 1. Status
     - Replication state of every virtual disk
     - Lag ?
-
-2. Informations
 
 3. Performance Metrics
     "VirtualDiskReplicationData": null,
@@ -169,281 +86,163 @@ Replication
 
 ServerGroup
 -----------
-
-- threshold on capacity
-- threshold on license expiration of next license
+- Threshold on capacity
+- Threshold on license expiration of next license
 
 Servers
 -------
-
 1. Status
-
     - Better status mapping (Running / Stopped / Unreachable)
 
 2. Informations
-
-    - license expiration
-
-3. Performance Metrics
-
-4. Configurable Parameters
+    - License expiration
 
 SharedPools
 -----------
-
-- perfdata
+- Perfdata
 - Filesystem Size
-- thresholds on latency
+- Thresholds on latency
 
 Snapshots
 ---------
-
-1. Status
-
-2. Informations
-
-3. Performance Metrics
-
 4. Configurable Parameters
     - Integrate into Snapshots Ruleset
     - Age of oldest / age of newest
 
 #############################################################################################################
-#            Already finished, yay                                                                          #
+# Already Finished Features                                                                                 #
 #############################################################################################################
 
 Alerts
 ------
-
 1. Status
-
-    - Print last 10 alerts sorted by age in check details
-    - Show latest alert directly in the service summary
-
-2. Information
-    
-    - Nothing yet
+    - [x] Print last 10 alerts sorted by age in check details
+    - [x] Show latest alert directly in the service summary
 
 3. Performance Metrics
-
-    - Amount of current alerts
-
-4. Configurable Thresholds
-
-    - Amount of Alerts
-    - Make "Support bundle collection completed successfully" configurable (remove from list)
-
-
-Events
-----
-
-1. Status
-
-    - Nothing yet
-
-2. Information
-    
-    - Nothing yet
-
-3. Performance Metrics
-
-    - Nothing yet
+    - [x] Amount of current alerts
 
 4. Configurable Thresholds
-
-    - Nothing yet
+    - [x] Amount of Alerts
+    - [x] Make "Support bundle collection completed successfully" configurable (remove from list)
 
 Ports
 -----
-
 1. Status
-
-    - Connected Port Status
-    - Port Errors
-        - InvalidCrcCount
-        - InvalidTransmissionWordCount
-        - LinkFailureCount
-        - LossOfSignalCount
-        - LossOfSyncCount
-
-2. Information
-    
-    - Nothing yet
+    - [x] Connected Port Status
+    - [x] Port Errors (InvalidCrcCount, InvalidTransmissionWordCount, LinkFailureCount, LossOfSignalCount, LossOfSyncCount)
 
 3. Performance Metrics
-
-    - Read / Write Throughput
-    - Read / Write IO/s
-    - Number of Port Errors
-        - InvalidCrcCount
-        - InvalidTransmissionWordCount
-        - LinkFailureCount
-        - LossOfSignalCount
-        - LossOfSyncCount
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
+    - [x] Number of Port Errors
 
 4. Configurable Thresholds
-
-    - make port online / offline configurable
-    - Tresholds on Number of
-        - InvalidCrcCount
-        - InvalidTransmissionWordCount
-        - LinkFailureCount
-        - LossOfSignalCount
-        - LossOfSyncCount
+    - [x] Make port online / offline configurable
+    - [x] Thresholds on Number of Port Errors
 
 Virtual Disks
 -------------
-
 1. Status
-
-    - disk status (Healthy, Offline, in Reclamation, in Recovery)
-    - served status (served / unserved)
+    - [x] Disk status (Healthy, Offline, in Reclamation, in Recovery)
+    - [x] Served status (served / unserved)
 
 2. Information
-
-    - Size
-    - Recovery Priority
-    - Compression enabled
-    - Dedup enabled
-    - Encryption enabled
-    - Write Through enabled
-    - Sector Size
+    - [x] Size
+    - [x] Recovery Priority
+    - [x] Compression enabled
+    - [x] Dedup enabled
+    - [x] Encryption enabled
+    - [x] Write Through enabled
+    - [x] Sector Size
 
 3. Performance Metrics
-
-    - Read / Write Throughput
-    - Read / Write IO/s
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
 
 4. Configurable Thresholds
-
-    - thresholds on 
-        - upper write IO
-        - upper read io
-        - upper read latency
-        - upper write latency
-
-    - Expected mapping state (server / not served)
-    - Expected path state (Path Down)
+    - [x] Upper write IO
+    - [x] Upper read IO
+    - [x] Upper read latency
+    - [x] Upper write latency
+    - [x] Expected mapping state (served / not served)
+    - [x] Expected path state (Path Down)
 
 Servers
 -------
-
 1. Status
-
-    - Status
-    - License state
+    - [x] Status
+    - [x] License state
 
 2. Information
-
-    - DataCore Version and Build Nr.
-    - Operating System Version
-    - Amount and type of CPUs
+    - [x] DataCore Version and Build Nr.
+    - [x] Operating System Version
+    - [x] Amount and type of CPUs
 
 3. Performance Metrics
-
-    - Read / Write Throughput
-    - Read / Write IO/s
-
-
-4. Configurable Thresholds
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
 
 ServerGroup
 -----------
-
-- overall licensed capacity
+- [x] Overall licensed capacity
 
 Pools
 -----
-
 1. Status
-
-    - check for oversubscription
-    - size
-    - Online / Offline
+    - [x] Check for oversubscription (configurable: CRIT/WARN/OK)
+    - [x] Size
+    - [x] Online / Offline
 
 2. Information
-
-    - Nr. of tiers
-    - Tier Reservation in %
-    - Nr. of physical disks
-    - Name of physical disks
-    - Sector Size
+    - [x] Nr. of tiers
+    - [x] Tier Reservation in %
+    - [x] Nr. of physical disks
+    - [x] Name of physical disks
+    - [x] Sector Size
 
 3. Performance Metrics
-
-    - Read / Write Throughput
-    - Read / Write IO/s
-    - Average Read / Write latency
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
+    - [x] Average Read / Write latency
 
 4. Configurable Thresholds
-
-    - Size
-
-SharedPools
------------
-
-Is it even different from regular pools ?
+    - [x] Size (filesystem-style with magic factor)
+    - [x] Oversubscription state (CRIT/WARN/OK)
 
 Physical Disks
 --------------
-
 1. Status
-
-2. Information
+    - [x] Online / Offline
 
 3. Performance Metrics
-
-    - Read / Write Throughput
-    - Read / Write IO/s
-    - Average Read / Write latency
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
+    - [x] Average Read / Write latency
 
 4. Configurable Thresholds
-
-    - thresholds on read/write latency
-    - thresholds on IO levels
+    - [x] Thresholds on read/write latency
 
 Hosts
 -----
 1. Status
-
-    - All or some ports disconnected
-
-2. Informations
-
+    - [x] All or some ports disconnected
 
 3. Performance Metrics
+    - [x] Read / Write Throughput
+    - [x] Read / Write IO/s
 
-    - Read / Write Throughput
-    - Read / Write IO/s
-
-
-4. Configurable Thresholds
-
-Hostgroup 
+Hostgroup
 ---------
-
 1. Status
-
-    - All or some ports disconnected
+    - [x] All or some ports disconnected
 
 2. Informations
-
-    - Max Operations per Sec
-    - Max Data Transferred Per Sec
-    - ChargeBack enabled
-
-3. Performance Metrics
-
-4. Configurable Thresholds
-
-Capacity Optimization
----------------------
+    - [x] Max Operations per Sec
+    - [x] Max Data Transferred Per Sec
+    - [x] ChargeBack enabled
 
 Snapshots
 ---------
-
-- age
-- amount
-
-Replication
------------
+- [x] Age
+- [x] Amount
