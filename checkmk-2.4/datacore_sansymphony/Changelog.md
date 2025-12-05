@@ -1,5 +1,6 @@
 # CHANGELOG
 
+- **2.4.3** - 05.12.2025 - Refactor: Extract duplicated code to lib.py, standardize imports and param access
 - **2.4.2** - 05.12.2025 - Add Manpages
 - **2.4.1** - 05.12.2025 - Major Code Cleanup, minor Bugfixes, Typing
 - **2.3.7** - 05.12.2025 - yield sansymphony host labels
