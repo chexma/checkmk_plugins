@@ -1,6 +1,7 @@
 # CHANGELOG
 
-- **2.3.7** - 05.12.2025 - Major Code Cleanup, minor Bugfixes, Typing
+- **2.4.2** - 05.12.2025 - Add Manpages
+- **2.4.1** - 05.12.2025 - Major Code Cleanup, minor Bugfixes, Typing
 - **2.3.7** - 05.12.2025 - yield sansymphony host labels
 - **2.3.6** - 25.11.2025 - Added new service for pool capacity monitoring with magic factor support, adds possibility to ignore pool oversubscription
 - **2.3.5** - 07.08.2025 - Changed until version to 2.4 and code cleanup by Andreas Döhler
