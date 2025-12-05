@@ -1,5 +1,62 @@
+<#
+.SYNOPSIS
+    Sets a host downtime in CheckMK using the REST API.
+
+.DESCRIPTION
+    This script connects to the CheckMK REST API and sets a downtime for the local host.
+    It can run in automatic mode (using configuration values) or interactive mode
+    (prompting for comment and duration).
+
+.PARAMETER Interactive
+    Enables interactive mode where the user is prompted for comment and duration.
+
+.PARAMETER Duration
+    Override the default downtime duration in seconds.
+
+.PARAMETER Comment
+    Override the default downtime comment.
+
+.PARAMETER Hostname
+    Override the local hostname. If not specified, uses the local computer name.
+
+.EXAMPLE
+    .\checkmk-rest-downtime.ps1
+    Sets a downtime using configuration values.
+
+.EXAMPLE
+    .\checkmk-rest-downtime.ps1 -Interactive
+    Prompts for comment and duration before setting the downtime.
+
+.EXAMPLE
+    .\checkmk-rest-downtime.ps1 -Duration 600 -Comment "Server maintenance"
+    Sets a 10-minute downtime with custom comment.
+
+.EXAMPLE
+    .\checkmk-rest-downtime.ps1 -Hostname "server01" -Duration 300
+    Sets a 5-minute downtime for a specific host.
+
+.NOTES
+    Author: Andre.Eckstein@Bechtle.com
+    Requires: PowerShell 5.1 or later
+    The automation user needs the permission: action.downtimes
+#>
+
+param(
+    [Parameter(Mandatory = $false)]
+    [switch]$Interactive,
+
+    [Parameter(Mandatory = $false)]
+    [int]$Duration,
+
+    [Parameter(Mandatory = $false)]
+    [string]$Comment,
+
+    [Parameter(Mandatory = $false)]
+    [string]$Hostname
+)
+
 #####################################################
-# Set a Host Downtime in checkmk using the REST API #
+# Set a Host Downtime in CheckMK using the REST API #
 # Andre.Eckstein@Bechtle.com                        #
 #####################################################
 
@@ -7,50 +64,41 @@
 # Configuration #
 #################
 
-# Resolvable Hostname or IP Adress of the checkmk server
-$CheckmkServer = "192.168.215.11"
+# Resolvable Hostname or IP Address of the CheckMK server (include port if needed)
+# Note: Use 127.0.0.1 instead of "localhost" if you experience IPv6/IPv4 issues
+$CheckmkServer = "127.0.0.1:5000"
 
-# checkmk site name
-$CheckmkSite = "monitoring"
+# CheckMK site name
+$CheckmkSite = "cmk"
 
-# protocol http or https <- (please :-)
+# Protocol http or https
 $protocol = "http"
 
-# checkmk automation user who sets the downtime
-$DowntimeUser = "downtime_user"
+# CheckMK automation user who sets the downtime
+$DowntimeUser = "cmkadmin"
 
-# checkmk automation secret of the above user
-$AutomationUserPassword = "12345678910"
+# CheckMK automation secret of the above user (not the login password!)
+$AutomationSecret = "cmkadmin"
 
-# Duration of the checkmk Downtime
-$DowntimeDuration = 300 # In seconds
+# Default duration of the CheckMK Downtime in seconds
+$DefaultDowntimeDuration = 300
 
-# Comment that will be used for the checkmk downtime comment and in the Windows Event Log
-$DowntimeComment = "Set by Powershell Downtime script."
+# Default comment for the downtime (username will be automatically prefixed)
+$DefaultDowntimeComment = "Host downtime set by PowerShell script."
 
-# Type of Downtime
-# Possible options: fixed | flexible
-$DownTimeType = "fixed"
-
-# Enable Debug Output, 
-# Possible options: $true | $false
-$Debug = $true
-
-# Ignore SSL/TLS errors with self signed certificates
-# Possible options: $true | $false
-$IgnoreTlsErrors = $true
-
-# Convert local Windows hostname to exactly match the hostname in checkmk 
+# Convert local Windows hostname to exactly match the hostname in CheckMK
 # Possible options: disabled | lowercase | uppercase | titlecase
 $ConvertHostname = "lowercase"
 
-# Add domain name to the hostname to exactly match the hostname in checkmk
-# Possible options: "" for no domain suffix or add your ".mydomain.whatever" for FQDN
+# Add domain name to the hostname to exactly match the hostname in CheckMK
+# Possible options: "" for no domain suffix or ".mydomain.tld" for FQDN
 $DomainSuffix = ""
 
-# Logs Messages to the Windows "System" Log. Needs administrative rights one time to create the Event Source
-# Possible options: $true | $false
-$LogToEventLog = $true
+# Enable Debug Output: $true | $false
+$Debug = $false
+
+# Ignore SSL/TLS errors with self-signed certificates: $true | $false
+$IgnoreTlsErrors = $true
 
 
 ########
@@ -61,234 +109,166 @@ $LogToEventLog = $true
 # Functions #
 #############
 
-function AddDomainSuffix {
-    [CmdletBinding()]
-	param(
-		[Parameter(Mandatory)]
-		[string]$hostname,
+function Get-TransformedHostname {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Hostname,
+        [string]$ConvertMode,
         [string]$DomainSuffix
-	)
+    )
 
-    if ($Domainsuffix.StartsWith(".")) {
-        $DomainSuffix = $Domainsuffix.Remove(0,1)
+    # Apply case conversion
+    switch ($ConvertMode) {
+        "lowercase" { $Hostname = $Hostname.ToLower() }
+        "uppercase" { $Hostname = $Hostname.ToUpper() }
+        "titlecase" { $Hostname = $Hostname.Substring(0,1).ToUpper() + $Hostname.Substring(1).ToLower() }
+        "disabled"  { } # Keep as-is
+        default     { Write-Warning "Unknown conversion mode: $ConvertMode" }
     }
 
-    if ( $debug ) {
-        write-host "Debug: Domain Suffix - Adding domain suffix ""$DomainSuffix"" to hostname ""$hostname"" "
+    # Add domain suffix if specified
+    if ($DomainSuffix) {
+        $DomainSuffix = $DomainSuffix.TrimStart(".")
+        $Hostname = "$Hostname.$DomainSuffix"
     }
 
-    $fqdn = "$hostname.$DomainSuffix"
-    return $fqdn
+    return $Hostname
 }
 
-function HostnametoUpperCase {
-    [CmdletBinding()]
-	param(
-		[Parameter(Mandatory)]
-		[string]$hostname
-	)
-    $hostname = $hostname.ToUpper()
-    return $hostname
-}
-
-function HostnametoLowerCase {
-    [CmdletBinding()]
-	param(
-		[Parameter(Mandatory)]
-		[string]$hostname
-	)
-    $hostname = $hostname.ToLower()
-    return $hostname
-}
-
-function HostnametoTitleCase {
-    [CmdletBinding()]
-	param(
-		[Parameter(Mandatory)]
-		[string]$hostname
-	)
-    $hostname = $hostname.substring(0,1).toupper()+$hostname.substring(1).tolower()
-    return $hostname
-}
-
-function GetHostName {
-        $hostname = ($env:COMPUTERNAME)
-        return $hostname
-    }
-
-function RewriteHostname {
-    [CmdletBinding()]
-	param(
-		[Parameter(Mandatory)]
-		[string]$hostname,
-        [string]$ConvertHostname
-	)
-
-    if ( $debug ) {
-            write-host "Debug: Hostname conversion - Starting case conversion, conversion mode: $ConvertHostname"
-        }
-
-    if ( $ConvertHostname -eq "lowercase") {
-        $hostname = HostnametoLowerCase $hostname
-    }
-    elseif ( $ConvertHostname -eq "uppercase") {
-        $hostname = HostnametoUpperCase $hostname
-    }
-    elseif ( $ConvertHostname -eq "titlecase") {
-        $hostname = HostnametoTitleCase $hostname
-    }
-    else {
-        Write-Error "Conversion Case $ConvertHostname does not exist, please add correct option..."
-    }
-
-    return $hostname
-}
-
-function Test-Administrator  
-{  
-    [OutputType([bool])]
-    param()
-    process {
-        [Security.Principal.WindowsPrincipal]$user = [Security.Principal.WindowsIdentity]::GetCurrent();
-        return $user.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator);
-    }
-}
 
 ########
 # Main #
 ########
 
-$hostname = GetHostName
+# Get current username for comment prefix
+$CurrentUser = [Environment]::UserName
 
-if ( $debug ) {
-    write-host "Debug: Hostname : $hostname"
+# Determine downtime duration
+if ($Duration -gt 0) {
+    $DowntimeDuration = $Duration
 }
-
-if ( $DomainSuffix ) {
-
-    if ( $debug ) {
-        write-host "Debug: Domain Suffix - Adding domain suffix enabled"
+elseif ($Interactive) {
+    $inputDuration = Read-Host "Enter downtime duration in seconds (default: $DefaultDowntimeDuration)"
+    if ($inputDuration -match '^\d+$' -and [int]$inputDuration -gt 0) {
+        $DowntimeDuration = [int]$inputDuration
     }
-
-    $hostname = AddDomainSuffix $hostname $DomainSuffix
-
-    if ( $debug ) {
-        write-host "Debug: Domain Suffix - Hostname after adding domain suffix : $hostname"
+    else {
+        $DowntimeDuration = $DefaultDowntimeDuration
+        Write-Host "Using default duration: $DowntimeDuration seconds" -ForegroundColor Yellow
     }
 }
 else {
-    if ( $debug ) {write-host "Debug: Domain Suffix - Not adding a domain suffix, none entered."}
+    $DowntimeDuration = $DefaultDowntimeDuration
 }
 
-if ($ConvertHostname -ne "disabled") {
-    $hostname = RewriteHostname $hostname $ConvertHostname
+# Determine downtime comment
+if ($Comment) {
+    $DowntimeComment = "${CurrentUser}: $Comment"
 }
-else {
-    if ( $Debug ) {
-        write-host "Debug: Hostname conversion - Not doing any case conversion, intentionally disabled"
+elseif ($Interactive) {
+    $inputComment = Read-Host "Enter downtime comment (default: $DefaultDowntimeComment)"
+    if ($inputComment) {
+        $DowntimeComment = "${CurrentUser}: $inputComment"
+    }
+    else {
+        $DowntimeComment = "${CurrentUser}: $DefaultDowntimeComment"
     }
 }
-
-if ( $debug ) { 
-        write-host "Debug: Hostname conversion - Final Hostname after all conversions : $hostname" 
+else {
+    $DowntimeComment = "${CurrentUser}: $DefaultDowntimeComment"
 }
 
+# Get and transform hostname
+if ($Hostname) {
+    # Use provided hostname (no transformation)
+    $TargetHostname = $Hostname
+}
+else {
+    # Use local computer name with transformation
+    $TargetHostname = Get-TransformedHostname -Hostname $env:COMPUTERNAME -ConvertMode $ConvertHostname -DomainSuffix $DomainSuffix
+}
+
+if ($Debug) {
+    Write-Host "Hostname: $TargetHostname" -ForegroundColor Cyan
+    Write-Host "Comment: $DowntimeComment" -ForegroundColor Cyan
+}
+
+# Ignore TLS errors if configured
 if ($IgnoreTlsErrors) {
-    # Disable SSL verification
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 }
 
-# Get current time in UTC (CheckMK API expects UTC)
-$now_utc = (Get-Date).ToUniversalTime()
-$now_string = $now_utc.ToString("yyyy-MM-ddTHH:mm:ssZ")
-$DowntimeEnds = $now_utc.AddSeconds($DowntimeDuration).ToString("yyyy-MM-ddTHH:mm:ssZ")
+# Calculate downtime times (UTC for API, local for display)
+$now_local = Get-Date
+$now_utc = $now_local.ToUniversalTime()
+$StartTimeUTC = $now_utc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+$EndTimeUTC = $now_utc.AddSeconds($DowntimeDuration).ToString("yyyy-MM-ddTHH:mm:ssZ")
+$StartTimeLocal = $now_local.ToString("yyyy-MM-dd HH:mm:ss")
+$EndTimeLocal = $now_local.AddSeconds($DowntimeDuration).ToString("yyyy-MM-dd HH:mm:ss")
 
-if ( $Debug ) {
-    write-host "Debug: Downtime Duration: $DowntimeDuration seconds"
-    write-host "Debug: Start time (UTC): $now_string"
-    write-host "Debug: End time (UTC): $DowntimeEnds"
+if ($Debug) {
+    Write-Host "Duration: $DowntimeDuration seconds" -ForegroundColor Cyan
+    Write-Host "Start: $StartTimeLocal" -ForegroundColor Cyan
+    Write-Host "End: $EndTimeLocal" -ForegroundColor Cyan
 }
 
-# Construct http Header
-$Header = @{
-    'Content-Type' = 'application/json'
-    "authorization" = "Bearer $DowntimeUser $AutomationUserPassword"
-    'Accept' = 'application/json'
-} 
-
+# Build request
 $Uri = "{0}://{1}/{2}/check_mk/api/1.0/domain-types/downtime/collections/host" -f $protocol, $CheckmkServer, $CheckmkSite
 
-if ( $Debug ) {
-    write-host "Debug: Constructed URI: $Uri"
+$Headers = @{
+    'Content-Type'  = 'application/json'
+    'Authorization' = "Bearer $DowntimeUser $AutomationSecret"
+    'Accept'        = 'application/json'
 }
 
-$Body =@{  
-    start_time = $now_string;
-    end_time =   $DowntimeEnds;
-    comment =  $DowntimeComment;
-    host_name = $hostname;
-    downtime_type = 'host';
-    }  | ConvertTo-Json -Compress
+$Body = @{
+    start_time    = $StartTimeUTC
+    end_time      = $EndTimeUTC
+    comment       = $DowntimeComment
+    host_name     = $TargetHostname
+    downtime_type = 'host'
+} | ConvertTo-Json -Compress
 
-$Parameters = @{
-Method = "Post"
-Uri = $Uri
-Header = $Header
-Body = $Body
-ContentType = "application/json"
+if ($Debug) {
+    Write-Host "URI: $Uri" -ForegroundColor Cyan
+    Write-Host "Body: $Body" -ForegroundColor Cyan
 }
 
-if ( $Debug ) {
-    write-host "Debug: Parameters..."
-    write-host $Parameters
-}
-
-$EventLogSource = "checkmk-downtime-script"
-$DowntimeSuccess = $false
-
+# Send request
 try {
-    $result = Invoke-WebRequest @Parameters
-    $DowntimeSuccess = $true
+    $Response = Invoke-WebRequest -Method Post -Uri $Uri -Headers $Headers -Body $Body -ContentType "application/json"
 
-    $ResponseText = "StatusCode: {0}, Status: {1}" -f $result.StatusCode, $result.StatusDescription
-    $LogMessage = "Successfully set a downtime from $now_string until $DowntimeEnds ($DowntimeDuration seconds). $ResponseText"
-
-    if ( $Debug ) {
-        write-host "Success: $LogMessage"
-    }
-
-} catch {
-    $ResponseStatusCode = $_.Exception.Response.StatusCode
-    $ResponseErrorMessage = $_.Exception.Message
-    $ErrorText = "Unable to set downtime for host '$hostname' on checkmk server $CheckmkServer. "
-    $ResponseErrorText = "StatusCode: {0}, Error: {1}" -f [int]$ResponseStatusCode, $ResponseErrorMessage
-    $LogMessage = $ErrorText + $ResponseErrorText
-    Write-Error -Message $LogMessage
+    Write-Host ""
+    Write-Host "SUCCESS: Downtime set for host '$TargetHostname'" -ForegroundColor Green
+    Write-Host "  From: $StartTimeLocal" -ForegroundColor Green
+    Write-Host "  Until: $EndTimeLocal" -ForegroundColor Green
+    Write-Host "  Duration: $DowntimeDuration seconds" -ForegroundColor Green
+    Write-Host "  Comment: $DowntimeComment" -ForegroundColor Green
+    exit 0
 }
+catch {
+    $StatusCode = [int]$_.Exception.Response.StatusCode
+    $ErrorMessage = $_.Exception.Message
 
-# Write to Windows Event Log if enabled
-if ( $LogToEventLog ) {
-    $EventType = if ($DowntimeSuccess) { "Information" } else { "Error" }
+    Write-Host ""
+    Write-Host "ERROR: Failed to set downtime for host '$TargetHostname'" -ForegroundColor Red
+    Write-Host "  Server: $CheckmkServer" -ForegroundColor Red
+    Write-Host "  HTTP Status: $StatusCode" -ForegroundColor Red
+    Write-Host "  Message: $ErrorMessage" -ForegroundColor Red
 
+    # Try to get response body for more details
     try {
-        Write-EventLog -LogName "System" -Source $EventLogSource -EventID 6556 -EntryType $EventType -Message $LogMessage -Category 1 -ErrorAction Stop
-    } catch {
-        Write-Warning "Failed to create Event Log entry, trying to create the Event source..."
-
-        if (-not (Test-Administrator)) {
-            Write-Error "This script must be executed with Administrator rights ONE time to create the necessary Windows Event Source."
-            exit 1
-        }
-        else {
-            if ([System.Diagnostics.EventLog]::SourceExists($EventLogSource) -eq $false) {
-                try {
-                    New-EventLog -LogName "System" -Source $EventLogSource
-                    Write-EventLog -LogName "System" -Source $EventLogSource -EventID 6556 -EntryType $EventType -Message $LogMessage -Category 1 -ErrorAction Stop
-                    Write-Host "Event source '$EventLogSource' created successfully."
-                } catch {
-                    Write-Error "Unable to create Event Source '$EventLogSource' in Windows System Eventlog: $($_.Exception.Message)"
-                }
+        $ResponseBody = $_.ErrorDetails.Message
+        if ($ResponseBody) {
+            $ErrorDetails = $ResponseBody | ConvertFrom-Json
+            if ($ErrorDetails.detail) {
+                Write-Host "  Detail: $($ErrorDetails.detail)" -ForegroundColor Red
             }
         }
     }
+    catch {
+        # Ignore JSON parsing errors
+    }
+
+    exit 1
 }
