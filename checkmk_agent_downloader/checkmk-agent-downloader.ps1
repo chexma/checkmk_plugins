@@ -294,15 +294,15 @@ Write-Host ""
 
 # Process each host
 $Counter = 0
-foreach ($Host in $HostList) {
+foreach ($TargetHost in $HostList) {
     $Counter++
     $ProgressPercent = [math]::Round(($Counter / $HostList.Count) * 100)
 
-    Write-Progress -Activity "Downloading agents" -Status "Processing $Host ($Counter of $($HostList.Count))" -PercentComplete $ProgressPercent
+    Write-Progress -Activity "Downloading agents" -Status "Processing $TargetHost ($Counter of $($HostList.Count))" -PercentComplete $ProgressPercent
 
-    Write-Host "[$Counter/$($HostList.Count)] Downloading agent for: $Host" -NoNewline
+    Write-Host "[$Counter/$($HostList.Count)] Downloading agent for: $TargetHost" -NoNewline
 
-    $Result = Download-AgentForHost -HostName $Host -OsType $OsType -OutputPath $OutputPath
+    $Result = Download-AgentForHost -HostName $TargetHost -OsType $OsType -OutputPath $OutputPath
     $Results += $Result
 
     if ($Result.Status -eq "Success") {
