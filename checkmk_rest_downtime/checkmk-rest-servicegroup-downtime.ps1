@@ -9,6 +9,10 @@
 .PARAMETER ServiceGroup
     The name of the servicegroup in CheckMK. Overrides the $ServiceGroupName configuration variable.
 
+.PARAMETER Secret
+    The automation secret as SecureString. If not provided and $AutomationSecret is empty,
+    you will be prompted to enter it interactively.
+
 .EXAMPLE
     .\checkmk-rest-servicegroup-downtime.ps1
     Sets a downtime using the default servicegroup from the configuration.
@@ -16,6 +20,11 @@
 .EXAMPLE
     .\checkmk-rest-servicegroup-downtime.ps1 -ServiceGroup "backup_services"
     Sets a downtime for all services in the servicegroup "backup_services".
+
+.EXAMPLE
+    $secret = Read-Host -AsSecureString
+    .\checkmk-rest-servicegroup-downtime.ps1 -Secret $secret
+    Sets a downtime using a pre-defined SecureString secret.
 
 .NOTES
     Author: Andre.Eckstein@Bechtle.com
@@ -25,7 +34,10 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [string]$ServiceGroup
+    [string]$ServiceGroup,
+
+    [Parameter(Mandatory = $false)]
+    [SecureString]$Secret
 )
 
 #############################################################
@@ -51,6 +63,7 @@ $protocol = ""
 $DowntimeUser = ""
 
 # CheckMK automation secret of the above user (not the login password!)
+# Leave empty to use interactive prompt or -Secret parameter
 $AutomationSecret = ""
 
 # Duration of the CheckMK Downtime in seconds
@@ -76,6 +89,22 @@ $IgnoreTlsErrors = $true
 ########
 # Main #
 ########
+
+# Determine automation secret (priority: parameter > config > prompt)
+if ($Secret) {
+    # Convert SecureString from parameter to plain text
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret)
+    $AutomationSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+}
+elseif (-not $AutomationSecret) {
+    # Prompt for secret if not configured
+    Write-Host "Enter automation secret for user '$DowntimeUser':" -ForegroundColor Yellow
+    $SecureSecret = Read-Host -AsSecureString
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureSecret)
+    $AutomationSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+}
 
 # Determine target servicegroup
 if ($ServiceGroup) {
